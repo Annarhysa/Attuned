@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: attuned
+      POSTGRES_PASSWORD: attuned
+      POSTGRES_DB: attuned
+    ports:
+      - '5432:5432'
+    volumes:
+      - attuned_pgdata:/var/lib/postgresql/data
+
+volumes:
+  attuned_pgdata:

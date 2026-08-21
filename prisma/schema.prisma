@@ -1,0 +1,226 @@
+// Postgres (works with any Postgres host: local Docker via docker-compose.yml,
+// Supabase, Neon, Railway, RDS, etc.) -- required for deploying to serverless
+// hosts like Vercel/Netlify, which don't persist a local SQLite file across
+// invocations. For local dev: `docker compose up -d` gives you a throwaway
+// Postgres with zero manual setup; see README for the connection string.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  profile      CandidateProfile?
+  applications Application[]
+}
+
+model CandidateProfile {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName        String   @default("")
+  professionalTitle String @default("")
+  location        String   @default("")
+  email           String   @default("")
+  phone           String   @default("")
+  linkedin        String   @default("")
+  github          String   @default("")
+  portfolio       String   @default("")
+  summary         String   @default("")
+
+  languages       String   @default("[]") // JSON string array
+
+  originalResumeFileId String? // FK-less pointer to the preserved original upload
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  experiences     Experience[]
+  education       Education[]
+  projects        Project[]
+  skills          Skill[]
+  certifications  Certification[]
+  achievements    Achievement[]
+}
+
+model Experience {
+  id          String  @id @default(uuid())
+  profileId   String
+  profile     CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  company     String
+  title       String
+  location    String   @default("")
+  startDate   String   @default("")
+  endDate     String   @default("") // "" or "Present"
+  bullets     String   @default("[]") // JSON string array of achievement bullets
+  order       Int      @default(0)
+}
+
+model Education {
+  id          String  @id @default(uuid())
+  profileId   String
+  profile     CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  institution String
+  degree      String
+  field       String   @default("")
+  startDate   String   @default("")
+  endDate     String   @default("")
+  details     String   @default("")
+  order       Int      @default(0)
+}
+
+model Project {
+  id          String  @id @default(uuid())
+  profileId   String
+  profile     CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String   @default("")
+  bullets     String   @default("[]") // JSON string array
+  technologies String  @default("[]") // JSON string array
+  link        String   @default("")
+  order       Int      @default(0)
+}
+
+model Skill {
+  id        String @id @default(uuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  name      String
+  category  String @default("technical") // technical | soft | tool | domain
+  order     Int    @default(0)
+}
+
+model Certification {
+  id        String @id @default(uuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  name      String
+  issuer    String @default("")
+  date      String @default("")
+}
+
+model Achievement {
+  id        String @id @default(uuid())
+  profileId String
+  profile   CandidateProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  description String
+}
+
+model Job {
+  id          String   @id @default(uuid())
+  rawText     String
+  sourceType  String   @default("paste") // paste | keywords | upload
+  title       String   @default("")
+  company     String   @default("")
+  location    String   @default("")
+  employmentType String @default("")
+  createdAt   DateTime @default(now())
+
+  analysis    JobAnalysis?
+  applications Application[]
+}
+
+model JobAnalysis {
+  id                String @id @default(uuid())
+  jobId             String @unique
+  job               Job    @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  niche             String  @default("tech-ai-fintech")
+  seniority         String  @default("")
+  requiredSkills    String  @default("[]") // JSON
+  preferredSkills   String  @default("[]") // JSON
+  responsibilities  String  @default("[]") // JSON
+  keywords          String  @default("[]") // JSON
+  softSkills        String  @default("[]") // JSON
+  technologies      String  @default("[]") // JSON
+  domainTerms       String  @default("[]") // JSON
+  importantPhrases  String  @default("[]") // JSON
+  companySignals    String  @default("[]") // JSON
+  tone              String  @default("professional")
+  matchStrategy     String  @default("")
+
+  createdAt         DateTime @default(now())
+}
+
+model Application {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId       String
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  status      String   @default("saved") // saved | applied | interview | rejected | offer
+  notes       String   @default("")
+  followUpDate DateTime?
+  appliedAt   DateTime?
+
+  matchAnalysis String? // JSON MatchAnalysis snapshot (pre-tailoring)
+  tailoredMatchAnalysis String? // JSON MatchAnalysis snapshot (post-tailoring)
+
+  designTemplateId String?
+  designTemplate   DesignTemplate? @relation(fields: [designTemplateId], references: [id])
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  documents   GeneratedDocument[]
+}
+
+model GeneratedDocument {
+  id            String   @id @default(uuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  type          String   // resume_original | resume_tailored | cover_letter | linkedin_about | short_message | recruiter_message
+  content       String   // JSON structured document content
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  versions      DocumentVersion[]
+}
+
+model DocumentVersion {
+  id          String  @id @default(uuid())
+  documentId  String
+  document    GeneratedDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  content     String   // JSON snapshot
+  note        String   @default("")
+  createdAt   DateTime @default(now())
+}
+
+model DesignTemplate {
+  id              String  @id @default(uuid())
+  name            String
+  industry        String  @default("general")
+  primaryColor    String  @default("#1e3a8a")
+  secondaryColor  String  @default("#0f172a")
+  font            String  @default("Inter")
+  fontSize        String  @default("medium")
+  spacing         String  @default("normal")
+  layout          String  @default("single-column")
+  headerStyle     String  @default("classic")
+  sectionStyle    String  @default("underline")
+  accentStyle     String  @default("minimal")
+  atsSafe         Boolean @default(true)
+
+  applications    Application[]
+}
