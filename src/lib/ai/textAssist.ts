@@ -18,6 +18,23 @@ const WEAK_VERBS: Record<string, string> = {
   helped: 'supported',
   used: 'applied',
   got: 'achieved',
+  handled: 'managed',
+  dealt: 'resolved',
+  'in charge of': 'led',
+  'assisted with': 'contributed to',
+  'was responsible for': 'owned',
+};
+const CONTRACTIONS: Record<string, string> = {
+  "don't": 'do not',
+  "didn't": 'did not',
+  "can't": 'cannot',
+  "won't": 'will not',
+  "i'm": 'I am',
+  "it's": 'it is',
+  "we're": 'we are',
+  "they're": 'they are',
+  "isn't": 'is not',
+  "wasn't": 'was not',
 };
 
 export interface AssistResult {
@@ -34,10 +51,36 @@ export function applyAssist(action: AssistAction, text: string, evidence: Eviden
   switch (action) {
     case 'improve': {
       let out = text;
+      const notes: string[] = [];
+      const passiveOpeners = /^(responsible for|in charge of|duties included|tasked with|involved in)\s+/i;
+      if (passiveOpeners.test(out)) {
+        out = out.replace(passiveOpeners, '').replace(/^\w/, (c) => c.toUpperCase());
+        notes.push('led with a direct action instead of a passive phrase');
+      }
+      const firstPersonOpener = /^(i|we)\s+(?=\w)/i;
+      if (firstPersonOpener.test(out)) {
+        out = out.replace(firstPersonOpener, '').replace(/^\w/, (c) => c.toUpperCase());
+        notes.push('dropped the first-person pronoun to match resume bullet style');
+      }
+      let verbSwapped = false;
       for (const [weak, strong] of Object.entries(WEAK_VERBS)) {
+        if (new RegExp(`\\b${weak}\\b`, 'i').test(out)) verbSwapped = true;
         out = out.replace(new RegExp(`\\b${weak}\\b`, 'gi'), strong);
       }
-      return { text: out, explanation: 'Replaced weak verbs (e.g. "worked on") with stronger, more specific ones already implied by your wording.' };
+      if (verbSwapped) notes.push('replaced weak verbs with stronger, more specific ones');
+      let contractionExpanded = false;
+      for (const [contraction, expanded] of Object.entries(CONTRACTIONS)) {
+        if (new RegExp(`\\b${contraction}\\b`, 'i').test(out)) contractionExpanded = true;
+        out = out.replace(new RegExp(`\\b${contraction}\\b`, 'gi'), expanded);
+      }
+      if (contractionExpanded) notes.push('expanded contractions for a more polished tone');
+      out = out.replace(/\s{2,}/g, ' ').trim();
+      out = out.replace(/^[a-z]/, (c) => c.toUpperCase());
+      if (/^[a-z]/.test(text) && out !== text) notes.push('capitalized the opening word');
+      if (notes.length === 0) {
+        return { text: out, explanation: 'This line already reads clearly -- no changes needed.' };
+      }
+      return { text: out, explanation: `Improved by: ${notes.join('; ')}.` };
     }
     case 'shorten': {
       const sentences = text.split(/(?<=[.!?])\s+/);
@@ -55,11 +98,21 @@ export function applyAssist(action: AssistAction, text: string, evidence: Eviden
       return { text: out, explanation: missingFromText ? `Made the language more technical by naming "${missingFromText}", which your profile already evidences here.` : 'Already technical -- no unevidenced terms were added.' };
     }
     case 'more_professional': {
-      const out = text
+      let out = text
         .replace(/\bawesome\b/gi, 'effective')
         .replace(/\bstuff\b/gi, 'work')
+        .replace(/\bcool\b/gi, 'valuable')
+        .replace(/\bhuge\b/gi, 'significant')
+        .replace(/\bgot to\b/gi, 'had the opportunity to')
         .replace(/!/g, '.');
-      return { text: out, explanation: 'Swapped casual phrasing for more formal, professional language.' };
+      for (const [contraction, expanded] of Object.entries(CONTRACTIONS)) {
+        out = out.replace(new RegExp(`\\b${contraction}\\b`, 'gi'), expanded);
+      }
+      out = out.replace(/\s{2,}/g, ' ').trim();
+      if (out === text) {
+        return { text: out, explanation: 'Already reads as professional -- no casual phrasing found to swap.' };
+      }
+      return { text: out, explanation: 'Swapped casual phrasing and contractions for more formal, professional language.' };
     }
     case 'add_keywords': {
       const candidates = evidence.filter((e) => e.status !== 'missing' && !containsTerm(text, e.requirement));

@@ -19,7 +19,15 @@ const NAV = [
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
+
+  // Highlight exactly one item: the nav entry whose href is the longest
+  // prefix match for the current path (so /applications/new lights up
+  // "Resume Builder" only, not "Applications" too).
+  const activeHref = NAV
+    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-secondary/30">
       <div className="flex h-16 items-center gap-2 border-b border-border px-5">
@@ -28,7 +36,7 @@ export function Sidebar() {
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => {
-          const active = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
+          const active = item.href === activeHref;
           return (
             <Link
               key={item.href}

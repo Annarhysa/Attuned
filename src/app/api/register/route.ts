@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { issueEmailVerificationLink } from '@/services/verification';
 
 const schema = z.object({
   name: z.string().min(1),
@@ -32,5 +33,7 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ id: user.id, email: user.email });
+  const { devPreview } = await issueEmailVerificationLink(user.id, user.email);
+
+  return NextResponse.json({ id: user.id, email: user.email, devPreview });
 }
