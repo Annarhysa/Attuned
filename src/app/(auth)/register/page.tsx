@@ -1,13 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -26,21 +28,23 @@ export default function RegisterPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
     });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(data.error || 'Something went wrong.');
       setLoading(false);
+      setError(data.error || 'Something went wrong.');
       return;
     }
-    const signInRes = await signIn('credentials', { email, password, redirect: false });
+
+    // Auto-login right after signup -- email verification is a link sent in
+    // the background (see devPreview below) and never blocks access.
+    const signInRes = await signIn('credentials', { email, password, remember: 'true', redirect: false });
     setLoading(false);
     if (signInRes?.error) {
-      setError('Account created — please log in.');
       router.push('/login');
       return;
     }
-    router.push('/onboarding');
-    router.refresh();
+    const preview = data.devPreview ? `&preview=${encodeURIComponent(data.devPreview)}` : '';
+    router.push(`/onboarding?justRegistered=true${preview}`);
   }
 
   return (
@@ -62,10 +66,12 @@ export default function RegisterPage() {
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <PasswordInput id="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} required />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
-            <Button type="submit" className="w-full" disabled={loading}>{loading ? 'Creating account...' : 'Create My Application'}</Button>
+            <Button type="submit" className="w-full gap-2" disabled={loading}>
+              {loading && <Loader2 className="h-4 w-4 animate-spin" />} {loading ? 'Creating account...' : 'Create My Application'}
+            </Button>
           </form>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account? <Link href="/login" className="text-primary underline-offset-4 hover:underline">Log in</Link>

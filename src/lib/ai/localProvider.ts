@@ -294,11 +294,12 @@ export class LocalHeuristicProvider implements AIProvider {
     match: MatchAnalysis,
     options: GenerationOptions
   ): Promise<CoverLetterDraft> {
+    const evidencePointCount = options.length === 'short' ? 1 : options.length === 'medium' ? 2 : 4;
     const withEvidence = match.evidence.filter((e) => e.status !== 'missing' && e.evidence);
     // Prefer real sentence-level evidence (experience/project bullets) over bare skill-list hits for prose.
     const narrativeEvidence = withEvidence.filter((e) => e.source && !e.source.startsWith('Skills'));
     const skillOnlyEvidence = withEvidence.filter((e) => e.source && e.source.startsWith('Skills'));
-    const strongEvidence = [...narrativeEvidence, ...skillOnlyEvidence].slice(0, 3);
+    const strongEvidence = [...narrativeEvidence, ...skillOnlyEvidence].slice(0, evidencePointCount);
     const company = job.company !== 'Not specified' ? job.company : 'your team';
     const title = job.job_title !== 'Not specified' ? job.job_title : 'this role';
 
@@ -325,14 +326,14 @@ export class LocalHeuristicProvider implements AIProvider {
     if (body.length === 0) {
       body.push(`My background in ${profile.professionalTitle || 'this field'} has prepared me to contribute from day one.`);
     }
-    if (options.length !== 'short' && match.recommendations.length > 0) {
-      body.push(match.recommendations[0]);
-    }
 
     const domainTermsUsed = job.domain_terms.slice(0, 2);
-    const domainParagraph = domainTermsUsed.length
-      ? `I'm particularly comfortable operating in environments that require attention to ${domainTermsUsed.join(' and ')}, which I understand are important considerations for this role.`
-      : `I bring a track record of translating requirements into working, reliable systems.`;
+    const domainParagraph =
+      options.length === 'short'
+        ? ''
+        : domainTermsUsed.length
+        ? `I'm particularly comfortable operating in environments that require attention to ${domainTermsUsed.join(' and ')}, which I understand are important considerations for this role.`
+        : `I bring a track record of translating requirements into working, reliable systems.`;
 
     const missingNote = match.gaps.length > 0 && options.length === 'detailed'
       ? ` While I haven't worked directly with ${match.gaps[0]}, I pick up new tools quickly and I'm eager to close that gap.`

@@ -14,7 +14,8 @@ import { DesignSelector } from '@/features/design-engine/DesignSelector';
 import { ATSAnalyzerPanel } from '@/features/ats-analyzer/ATSAnalyzerPanel';
 import { ExportPanel } from '@/features/document-editor/ExportPanel';
 import { safeJsonParse } from '@/lib/utils';
-import { CoverLetterDraft, DesignTemplate, GenerationOptions, JobAnalysis, MatchAnalysis, TailoredResumeDraft } from '@/types';
+import { CandidateProfile, CoverLetterDraft, DesignTemplate, GenerationOptions, JobAnalysis, MatchAnalysis, TailoredResumeDraft } from '@/types';
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
 
 interface ApplicationData {
   id: string;
@@ -28,11 +29,43 @@ interface ApplicationData {
 
 const MATCH_THRESHOLD = 50;
 
+const TAB_ORDER: { key: string; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'match', label: 'Match Analysis' },
+  { key: 'keywords', label: 'Keyword Map' },
+  { key: 'generate', label: 'Generate' },
+  { key: 'editor', label: 'Editor' },
+  { key: 'design', label: 'Design' },
+  { key: 'ats', label: 'ATS Check' },
+  { key: 'export', label: 'Export' },
+];
+
+function TabFooterNav({ current, onNavigate }: { current: string; onNavigate: (tab: string) => void }) {
+  const idx = TAB_ORDER.findIndex((t) => t.key === current);
+  const prev = idx > 0 ? TAB_ORDER[idx - 1] : null;
+  const next = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
+  return (
+    <div className="mt-8 flex items-center justify-between border-t border-border pt-4">
+      {prev ? (
+        <Button variant="outline" className="gap-2" onClick={() => onNavigate(prev.key)}>
+          <ArrowLeft className="h-4 w-4" /> {prev.label}
+        </Button>
+      ) : <span />}
+      {next ? (
+        <Button className="gap-2" onClick={() => onNavigate(next.key)}>
+          {next.label} <ArrowRight className="h-4 w-4" />
+        </Button>
+      ) : <span />}
+    </div>
+  );
+}
+
 export default function ApplicationWorkspacePage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
 
   const [app, setApp] = useState<ApplicationData | null>(null);
+  const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [jobAnalysis, setJobAnalysis] = useState<JobAnalysis | null>(null);
   const [match, setMatch] = useState<MatchAnalysis | null>(null);
   const [tailoredMatch, setTailoredMatch] = useState<MatchAnalysis | null>(null);
@@ -55,7 +88,10 @@ export default function ApplicationWorkspacePage() {
     if (coverDoc) setLetter(safeJsonParse<CoverLetterDraft | null>(coverDoc.content, null));
   }, [id]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    fetch('/api/profile').then((r) => r.json()).then((data) => setProfile(data.profile));
+  }, [load]);
 
   const runMatch = useCallback(async () => {
     setLoadingMatch(true);
@@ -89,11 +125,17 @@ export default function ApplicationWorkspacePage() {
   async function saveDocument(type: string, content: unknown) {
     const doc = app?.documents.find((d) => d.type === type);
     if (!doc) return;
-    await fetch(`/api/applications/${id}/documents/${doc.id}`, {
+    const res = await fetch(`/api/applications/${id}/documents/${doc.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ content }),
     });
+    if (res.ok) {
+      const data = await res.json();
+      const parsed = safeJsonParse(data.document.content, content);
+      if (type === 'resume_tailored') setDraft(parsed as TailoredResumeDraft);
+      if (type === 'cover_letter') setLetter(parsed as CoverLetterDraft);
+    }
   }
 
   async function handleSelectDesign(template: DesignTemplate & { id: string }) {
@@ -105,7 +147,13 @@ export default function ApplicationWorkspacePage() {
     setApp((a) => (a ? { ...a, designTemplate: template } : a));
   }
 
-  if (!app) return <p className="text-sm text-muted-foreground">Loading application...</p>;
+  if (!app) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Loading application...
+      </div>
+    );
+  }
 
   const effectiveMatch = tailoredMatch || match;
   const suitable = (effectiveMatch?.overall_score ?? 0) >= MATCH_THRESHOLD;
@@ -122,18 +170,15 @@ export default function ApplicationWorkspacePage() {
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="match">Match Analysis</TabsTrigger>
-          <TabsTrigger value="keywords">Keyword Map</TabsTrigger>
-          <TabsTrigger value="generate">Generate</TabsTrigger>
-          <TabsTrigger value="editor">Editor</TabsTrigger>
-          <TabsTrigger value="design">Design</TabsTrigger>
-          <TabsTrigger value="ats">ATS Check</TabsTrigger>
-          <TabsTrigger value="export">Export</TabsTrigger>
+          {TAB_ORDER.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-4">
-          {loadingMatch && <p className="text-sm text-muted-foreground">Analyzing your match against this job...</p>}
+          {loadingMatch && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Analyzing your match against this job...
+            </p>
+          )}
           {effectiveMatch && (
             <Card>
               <CardContent className="space-y-4 py-6">
@@ -172,40 +217,58 @@ export default function ApplicationWorkspacePage() {
               </CardContent>
             </Card>
           )}
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="match" className="mt-6">
-          {effectiveMatch ? <MatchScore match={effectiveMatch} title={tailoredMatch ? 'Tailored Resume Match' : 'Resume Match Score'} /> : <p className="text-sm text-muted-foreground">Running match analysis...</p>}
+          {effectiveMatch ? (
+            <MatchScore match={effectiveMatch} title={tailoredMatch ? 'Tailored Resume Match' : 'Resume Match Score'} />
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Running match analysis...</p>
+          )}
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="keywords" className="mt-6">
           {effectiveMatch ? <KeywordMap match={effectiveMatch} /> : <p className="text-sm text-muted-foreground">Run match analysis first.</p>}
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="generate" className="mt-6">
           <GenerationPanel onGenerate={handleGenerate} generating={generating} />
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="editor" className="mt-6">
-          <DocumentEditor
-            applicationId={id}
-            draft={draft}
-            letter={letter}
-            onChangeDraft={(d) => { setDraft(d); saveDocument('resume_tailored', d); }}
-            onChangeLetter={(l) => { setLetter(l); saveDocument('cover_letter', l); }}
-          />
+          {profile ? (
+            <DocumentEditor
+              applicationId={id}
+              profile={profile}
+              draft={draft}
+              letter={letter}
+              design={app.designTemplate}
+              onSaveDraft={(d) => saveDocument('resume_tailored', d)}
+              onSaveLetter={(l) => saveDocument('cover_letter', l)}
+            />
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading your profile...</p>
+          )}
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="design" className="mt-6">
           <DesignSelector applicationId={id} selected={app.designTemplate} onSelect={handleSelectDesign} />
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="ats" className="mt-6">
           <ATSAnalyzerPanel applicationId={id} />
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="export" className="mt-6">
           <ExportPanel applicationId={id} />
+          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
       </Tabs>
     </div>

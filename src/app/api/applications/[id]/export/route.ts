@@ -39,7 +39,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (format === 'resume-pdf' || format === 'resume-docx') {
     if (!draft) return NextResponse.json({ error: 'Generate a tailored resume first.' }, { status: 400 });
-    const buffer = format === 'resume-pdf' ? await renderResumePDF(profile, draft, design) : await renderResumeDOCX(profile, draft);
+    const buffer = format === 'resume-pdf' ? await renderResumePDF(profile, draft, design) : await renderResumeDOCX(profile, draft, design);
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': format === 'resume-pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -50,7 +50,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (format === 'cover-pdf' || format === 'cover-docx') {
     if (!letter) return NextResponse.json({ error: 'Generate a cover letter first.' }, { status: 400 });
-    const buffer = format === 'cover-pdf' ? await renderCoverLetterPDF(letter, design) : await renderCoverLetterDOCX(letter);
+    const buffer = format === 'cover-pdf' ? await renderCoverLetterPDF(letter, design) : await renderCoverLetterDOCX(letter, design);
     return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': format === 'cover-pdf' ? 'application/pdf' : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -63,11 +63,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const zip = new JSZip();
   if (draft) {
     zip.file(`${base}_Resume.pdf`, await renderResumePDF(profile, draft, design));
-    zip.file(`${base}_Resume.docx`, await renderResumeDOCX(profile, draft));
+    zip.file(`${base}_Resume.docx`, await renderResumeDOCX(profile, draft, design));
   }
   if (letter) {
     zip.file(`${base}_CoverLetter.pdf`, await renderCoverLetterPDF(letter, design));
-    zip.file(`${base}_CoverLetter.docx`, await renderCoverLetterDOCX(letter));
+    zip.file(`${base}_CoverLetter.docx`, await renderCoverLetterDOCX(letter, design));
   }
   if (!draft && !letter) return NextResponse.json({ error: 'Nothing to export yet.' }, { status: 400 });
 

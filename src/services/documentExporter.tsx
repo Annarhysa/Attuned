@@ -1,6 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
-import { Document as DocxDocument, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { Document as DocxDocument, Packer, Paragraph, TextRun } from 'docx';
 import { CandidateProfile, CoverLetterDraft, DesignTemplate, TailoredResumeDraft } from '@/types';
 
 const DEFAULT_DESIGN: DesignTemplate = {
@@ -9,20 +9,46 @@ const DEFAULT_DESIGN: DesignTemplate = {
   headerStyle: 'classic', sectionStyle: 'plain', accentStyle: 'none', atsSafe: true,
 };
 
+// react-pdf only ships a handful of built-in fonts (custom fonts need explicit
+// registration, which isn't worth the fragility here) -- map each design's
+// chosen font to the closest built-in family so serif/monospace designs
+// (FinTech's Georgia, Legal's Georgia, Engineering's monospace-leaning look)
+// still render visibly differently from the sans-serif default.
+function pdfFontFamily(font: string): string {
+  const lower = font.toLowerCase();
+  if (/(georgia|times|serif|garamond|cambria)/.test(lower)) return 'Times-Roman';
+  if (/(courier|mono|consolas)/.test(lower)) return 'Courier';
+  return 'Helvetica';
+}
+
+function pdfFontFamilyBold(font: string): string {
+  const family = pdfFontFamily(font);
+  if (family === 'Times-Roman') return 'Times-Bold';
+  if (family === 'Courier') return 'Courier-Bold';
+  return 'Helvetica-Bold';
+}
+
 function pdfStyles(design: DesignTemplate) {
   const fontSize = design.fontSize === 'small' ? 9 : design.fontSize === 'large' ? 11.5 : 10;
   const gap = design.spacing === 'compact' ? 4 : design.spacing === 'relaxed' ? 12 : 8;
+  const family = pdfFontFamily(design.font);
+  const familyBold = pdfFontFamilyBold(design.font);
   return StyleSheet.create({
-    page: { padding: 40, fontSize, fontFamily: 'Helvetica', color: '#1a1a1a' },
-    name: { fontSize: fontSize + 10, fontWeight: 700, color: design.primaryColor, marginBottom: 2 },
+    page: { padding: 40, fontSize, fontFamily: family, color: '#1a1a1a' },
+    name: { fontSize: fontSize + 10, fontFamily: familyBold, color: design.primaryColor, marginBottom: 2 },
     title: { fontSize: fontSize + 2, color: design.secondaryColor, marginBottom: 6 },
     contact: { fontSize: fontSize - 1, color: '#4b5563', marginBottom: gap },
-    sectionTitle: { fontSize: fontSize + 1, fontWeight: 700, color: design.primaryColor, marginTop: gap, marginBottom: 4, textTransform: design.sectionStyle === 'bold-caps' ? 'uppercase' : 'none', borderBottomWidth: design.sectionStyle === 'underline' ? 1 : 0, borderBottomColor: design.primaryColor, paddingBottom: 2 },
-    entryHeader: { fontSize, fontWeight: 700, marginTop: 6 },
+    sectionTitle: { fontSize: fontSize + 1, fontFamily: familyBold, color: design.primaryColor, marginTop: gap, marginBottom: 4, textTransform: design.sectionStyle === 'bold-caps' ? 'uppercase' : 'none', borderBottomWidth: design.sectionStyle === 'underline' ? 1 : 0, borderBottomColor: design.primaryColor, paddingBottom: 2 },
+    entryHeader: { fontSize, fontFamily: familyBold, marginTop: 6 },
     entrySub: { fontSize: fontSize - 1, color: '#4b5563', marginBottom: 2 },
     bullet: { fontSize, marginBottom: 2, marginLeft: 10 },
     paragraph: { fontSize, marginBottom: gap, lineHeight: 1.4 },
   });
+}
+
+function entryTitleLine(title: string, company: string): string {
+  if (title && company) return `${title} — ${company}`;
+  return title || company;
 }
 
 function ResumePDF({ profile, draft, design }: { profile: CandidateProfile; draft: TailoredResumeDraft; design: DesignTemplate }) {
@@ -31,7 +57,7 @@ function ResumePDF({ profile, draft, design }: { profile: CandidateProfile; draf
     <Document>
       <Page size="A4" style={s.page}>
         <Text style={s.name}>{profile.fullName}</Text>
-        <Text style={s.title}>{draft.headline || profile.professionalTitle}</Text>
+        {(draft.headline || profile.professionalTitle) && <Text style={s.title}>{draft.headline || profile.professionalTitle}</Text>}
         <Text style={s.contact}>
           {[profile.location, profile.email, profile.phone, profile.linkedin, profile.github, profile.portfolio].filter(Boolean).join('  |  ')}
         </Text>
@@ -54,10 +80,14 @@ function ResumePDF({ profile, draft, design }: { profile: CandidateProfile; draf
           <View>
             <Text style={s.sectionTitle}>Experience</Text>
             {draft.experiences.map((e, i) => (
-              <View key={i}>
-                <Text style={s.entryHeader}>{e.entry.title} — {e.entry.company}</Text>
-                <Text style={s.entrySub}>{e.entry.startDate} – {e.entry.endDate || 'Present'}{e.entry.location ? ` · ${e.entry.location}` : ''}</Text>
-                {e.afterBullets.map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
+              <View key={i} wrap={false}>
+                {entryTitleLine(e.entry.title, e.entry.company) && <Text style={s.entryHeader}>{entryTitleLine(e.entry.title, e.entry.company)}</Text>}
+                {(e.entry.startDate || e.entry.endDate || e.entry.location) && (
+                  <Text style={s.entrySub}>
+                    {[e.entry.startDate && `${e.entry.startDate} – ${e.entry.endDate || 'Present'}`, e.entry.location].filter(Boolean).join(' · ')}
+                  </Text>
+                )}
+                {e.afterBullets.filter(Boolean).map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
               </View>
             ))}
           </View>
@@ -67,9 +97,9 @@ function ResumePDF({ profile, draft, design }: { profile: CandidateProfile; draf
           <View>
             <Text style={s.sectionTitle}>Projects</Text>
             {draft.projects.map((p, i) => (
-              <View key={i}>
+              <View key={i} wrap={false}>
                 <Text style={s.entryHeader}>{p.entry.name}{p.entry.technologies.length ? ` (${p.entry.technologies.join(', ')})` : ''}</Text>
-                {p.afterBullets.map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
+                {p.afterBullets.filter(Boolean).map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
               </View>
             ))}
           </View>
@@ -79,9 +109,9 @@ function ResumePDF({ profile, draft, design }: { profile: CandidateProfile; draf
           <View>
             <Text style={s.sectionTitle}>Education</Text>
             {draft.education.map((e, i) => (
-              <View key={i}>
-                <Text style={s.entryHeader}>{e.degree}{e.field ? `, ${e.field}` : ''}</Text>
-                <Text style={s.entrySub}>{e.institution} {e.endDate ? `· ${e.endDate}` : ''}</Text>
+              <View key={i} wrap={false}>
+                {(e.degree || e.field) && <Text style={s.entryHeader}>{[e.degree, e.field].filter(Boolean).join(', ')}</Text>}
+                {(e.institution || e.endDate) && <Text style={s.entrySub}>{[e.institution, e.endDate].filter(Boolean).join(' · ')}</Text>}
               </View>
             ))}
           </View>
@@ -107,10 +137,10 @@ function CoverLetterPDF({ letter, design }: { letter: CoverLetterDraft; design: 
         <Text style={s.contact}>{letter.header.date}</Text>
         <Text style={s.contact}>{letter.header.company}{letter.header.hiringManager ? ` · Attn: ${letter.header.hiringManager}` : ''}</Text>
         <View style={{ marginTop: 16 }}>
-          <Text style={s.paragraph}>{letter.opening}</Text>
-          {letter.body.map((p, i) => <Text key={i} style={s.paragraph}>{p}</Text>)}
-          <Text style={s.paragraph}>{letter.domainParagraph}</Text>
-          <Text style={s.paragraph}>{letter.closing}</Text>
+          {letter.opening && <Text style={s.paragraph}>{letter.opening}</Text>}
+          {letter.body.filter(Boolean).map((p, i) => <Text key={i} style={s.paragraph}>{p}</Text>)}
+          {letter.domainParagraph && <Text style={s.paragraph}>{letter.domainParagraph}</Text>}
+          {letter.closing && <Text style={s.paragraph}>{letter.closing}</Text>}
           <Text style={s.paragraph}>Sincerely,{'\n'}{letter.signature}</Text>
         </View>
       </Page>
@@ -126,65 +156,116 @@ export async function renderCoverLetterPDF(letter: CoverLetterDraft, design?: De
   return renderToBuffer(<CoverLetterPDF letter={letter} design={design || DEFAULT_DESIGN} />);
 }
 
-export async function renderResumeDOCX(profile: CandidateProfile, draft: TailoredResumeDraft): Promise<Buffer> {
+function docxHexColor(hex: string): string {
+  return hex.replace('#', '').toUpperCase();
+}
+
+function docxHeading(text: string, design: DesignTemplate, size = 24): Paragraph {
+  return new Paragraph({
+    spacing: { before: 200, after: 100 },
+    border: design.sectionStyle === 'underline' ? { bottom: { color: docxHexColor(design.primaryColor), space: 2, style: 'single', size: 6 } } : undefined,
+    children: [
+      new TextRun({
+        text: design.sectionStyle === 'bold-caps' ? text.toUpperCase() : text,
+        bold: true,
+        color: docxHexColor(design.primaryColor),
+        size,
+        font: design.font,
+      }),
+    ],
+  });
+}
+
+export async function renderResumeDOCX(profile: CandidateProfile, draft: TailoredResumeDraft, design?: DesignTemplate | null): Promise<Buffer> {
+  const d = design || DEFAULT_DESIGN;
+  const baseSize = d.fontSize === 'small' ? 20 : d.fontSize === 'large' ? 26 : 22;
+
   const children: Paragraph[] = [
-    new Paragraph({ text: profile.fullName, heading: HeadingLevel.TITLE }),
-    new Paragraph({ text: draft.headline || profile.professionalTitle }),
-    new Paragraph({ text: [profile.location, profile.email, profile.phone, profile.linkedin, profile.github].filter(Boolean).join(' | ') }),
+    new Paragraph({
+      children: [new TextRun({ text: profile.fullName, bold: true, size: baseSize + 12, color: docxHexColor(d.primaryColor), font: d.font })],
+    }),
   ];
+  const headline = draft.headline || profile.professionalTitle;
+  if (headline) {
+    children.push(new Paragraph({ children: [new TextRun({ text: headline, size: baseSize + 2, color: docxHexColor(d.secondaryColor), font: d.font })] }));
+  }
+  const contactLine = [profile.location, profile.email, profile.phone, profile.linkedin, profile.github, profile.portfolio].filter(Boolean).join('  |  ');
+  if (contactLine) {
+    children.push(new Paragraph({ children: [new TextRun({ text: contactLine, size: baseSize - 2, color: '4B5563', font: d.font })] }));
+  }
 
   if (draft.summary.after) {
-    children.push(new Paragraph({ text: 'Summary', heading: HeadingLevel.HEADING_2 }));
-    children.push(new Paragraph({ text: draft.summary.after }));
+    children.push(docxHeading('Summary', d, baseSize + 2));
+    children.push(new Paragraph({ children: [new TextRun({ text: draft.summary.after, size: baseSize, font: d.font })] }));
   }
   if (draft.skills.after.length) {
-    children.push(new Paragraph({ text: 'Skills', heading: HeadingLevel.HEADING_2 }));
-    children.push(new Paragraph({ text: draft.skills.after.join(', ') }));
+    children.push(docxHeading('Skills', d, baseSize + 2));
+    children.push(new Paragraph({ children: [new TextRun({ text: draft.skills.after.join(', '), size: baseSize, font: d.font })] }));
   }
   if (draft.experiences.length) {
-    children.push(new Paragraph({ text: 'Experience', heading: HeadingLevel.HEADING_2 }));
+    children.push(docxHeading('Experience', d, baseSize + 2));
     for (const e of draft.experiences) {
-      children.push(new Paragraph({ children: [new TextRun({ text: `${e.entry.title} — ${e.entry.company}`, bold: true })] }));
-      children.push(new Paragraph({ text: `${e.entry.startDate} – ${e.entry.endDate || 'Present'}` }));
-      for (const b of e.afterBullets) children.push(new Paragraph({ text: b, bullet: { level: 0 } }));
+      const titleLine = e.entry.title && e.entry.company ? `${e.entry.title} — ${e.entry.company}` : e.entry.title || e.entry.company;
+      if (titleLine) children.push(new Paragraph({ children: [new TextRun({ text: titleLine, bold: true, size: baseSize, font: d.font })] }));
+      const dateLine = [e.entry.startDate && `${e.entry.startDate} – ${e.entry.endDate || 'Present'}`, e.entry.location].filter(Boolean).join(' · ');
+      if (dateLine) children.push(new Paragraph({ children: [new TextRun({ text: dateLine, italics: true, size: baseSize - 2, color: '4B5563', font: d.font })] }));
+      for (const b of e.afterBullets.filter(Boolean)) {
+        children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: b, size: baseSize, font: d.font })] }));
+      }
     }
   }
   if (draft.projects.length) {
-    children.push(new Paragraph({ text: 'Projects', heading: HeadingLevel.HEADING_2 }));
+    children.push(docxHeading('Projects', d, baseSize + 2));
     for (const p of draft.projects) {
-      children.push(new Paragraph({ children: [new TextRun({ text: p.entry.name, bold: true })] }));
-      for (const b of p.afterBullets) children.push(new Paragraph({ text: b, bullet: { level: 0 } }));
+      const label = p.entry.technologies.length ? `${p.entry.name} (${p.entry.technologies.join(', ')})` : p.entry.name;
+      children.push(new Paragraph({ children: [new TextRun({ text: label, bold: true, size: baseSize, font: d.font })] }));
+      for (const b of p.afterBullets.filter(Boolean)) {
+        children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: b, size: baseSize, font: d.font })] }));
+      }
     }
   }
   if (draft.education.length) {
-    children.push(new Paragraph({ text: 'Education', heading: HeadingLevel.HEADING_2 }));
+    children.push(docxHeading('Education', d, baseSize + 2));
     for (const e of draft.education) {
-      children.push(new Paragraph({ text: `${e.degree}${e.field ? ', ' + e.field : ''} — ${e.institution}` }));
+      const degreeLine = [e.degree, e.field].filter(Boolean).join(', ');
+      if (degreeLine) children.push(new Paragraph({ children: [new TextRun({ text: degreeLine, bold: true, size: baseSize, font: d.font })] }));
+      const instLine = [e.institution, e.endDate].filter(Boolean).join(' · ');
+      if (instLine) children.push(new Paragraph({ children: [new TextRun({ text: instLine, size: baseSize - 2, color: '4B5563', font: d.font })] }));
     }
   }
   if (draft.certifications.length) {
-    children.push(new Paragraph({ text: 'Certifications', heading: HeadingLevel.HEADING_2 }));
-    for (const c of draft.certifications) children.push(new Paragraph({ text: c.name, bullet: { level: 0 } }));
+    children.push(docxHeading('Certifications', d, baseSize + 2));
+    for (const c of draft.certifications) {
+      children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: c.name + (c.issuer ? ` — ${c.issuer}` : ''), size: baseSize, font: d.font })] }));
+    }
   }
 
   const doc = new DocxDocument({ sections: [{ children }] });
   return Packer.toBuffer(doc);
 }
 
-export async function renderCoverLetterDOCX(letter: CoverLetterDraft): Promise<Buffer> {
+export async function renderCoverLetterDOCX(letter: CoverLetterDraft, design?: DesignTemplate | null): Promise<Buffer> {
+  const d = design || DEFAULT_DESIGN;
+  const baseSize = d.fontSize === 'small' ? 20 : d.fontSize === 'large' ? 26 : 22;
+
   const children: Paragraph[] = [
-    new Paragraph({ text: letter.header.candidateName, heading: HeadingLevel.TITLE }),
-    new Paragraph({ text: letter.header.date }),
-    new Paragraph({ text: letter.header.company }),
+    new Paragraph({ children: [new TextRun({ text: letter.header.candidateName, bold: true, size: baseSize + 12, color: docxHexColor(d.primaryColor), font: d.font })] }),
+    new Paragraph({ children: [new TextRun({ text: letter.header.date, size: baseSize - 2, color: '4B5563', font: d.font })] }),
+    new Paragraph({
+      children: [new TextRun({ text: letter.header.company + (letter.header.hiringManager ? ` · Attn: ${letter.header.hiringManager}` : ''), size: baseSize - 2, color: '4B5563', font: d.font })],
+    }),
     new Paragraph({ text: '' }),
-    new Paragraph({ text: letter.opening }),
-    ...letter.body.map((p) => new Paragraph({ text: p })),
-    new Paragraph({ text: letter.domainParagraph }),
-    new Paragraph({ text: letter.closing }),
-    new Paragraph({ text: '' }),
-    new Paragraph({ text: `Sincerely,` }),
-    new Paragraph({ text: letter.signature }),
   ];
+
+  const paragraphs = [letter.opening, ...letter.body, letter.domainParagraph, letter.closing].filter(Boolean);
+  for (const p of paragraphs) {
+    children.push(new Paragraph({ spacing: { after: 160 }, children: [new TextRun({ text: p, size: baseSize, font: d.font })] }));
+  }
+
+  children.push(new Paragraph({ text: '' }));
+  children.push(new Paragraph({ children: [new TextRun({ text: 'Sincerely,', size: baseSize, font: d.font })] }));
+  children.push(new Paragraph({ children: [new TextRun({ text: letter.signature, size: baseSize, font: d.font })] }));
+
   const doc = new DocxDocument({ sections: [{ children }] });
   return Packer.toBuffer(doc);
 }
