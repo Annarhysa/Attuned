@@ -11,7 +11,10 @@ import { Plus } from 'lucide-react';
 export default async function ApplicationsPage() {
   const userId = await requireUserId();
   const applications = await prisma.application.findMany({
-    where: { userId },
+    // "Checked out": actually opened/engaged with, not a freshly-created
+    // placeholder that was never worked on (status still default and no
+    // match analysis has run yet).
+    where: { userId, OR: [{ status: { not: 'saved' } }, { matchAnalysis: { not: null } }] },
     include: { job: true },
     orderBy: { createdAt: 'desc' },
   });
@@ -21,7 +24,7 @@ export default async function ApplicationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Applications</h1>
-          <p className="text-sm text-muted-foreground">Every application workspace you&apos;ve created.</p>
+          <p className="text-sm text-muted-foreground">Applications you&apos;ve opened and started working on.</p>
         </div>
         <Link href="/applications/new"><Button className="gap-2"><Plus className="h-4 w-4" /> Create New Application</Button></Link>
       </div>

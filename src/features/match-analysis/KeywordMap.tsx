@@ -13,6 +13,9 @@ export function KeywordMap({ match }: { match: MatchAnalysis }) {
     <Card>
       <CardHeader><CardTitle className="text-base">Job Requirement → Candidate Evidence</CardTitle></CardHeader>
       <CardContent className="space-y-3">
+        {match.evidence.length === 0 && (
+          <p className="text-sm text-muted-foreground">No specific requirements were detected in this job description to map against your profile.</p>
+        )}
         {match.evidence.map((e) => {
           const meta = STATUS_META[e.status];
           const Icon = meta.icon;

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { DocumentEditor } from '@/features/document-editor/DocumentEditor';
 import { DesignSelector } from '@/features/design-engine/DesignSelector';
 import { ATSAnalyzerPanel } from '@/features/ats-analyzer/ATSAnalyzerPanel';
 import { ExportPanel } from '@/features/document-editor/ExportPanel';
+import { FirstVisitTour } from '@/features/document-editor/FirstVisitTour';
 import { safeJsonParse } from '@/lib/utils';
 import { CandidateProfile, CoverLetterDraft, DesignTemplate, GenerationOptions, JobAnalysis, MatchAnalysis, TailoredResumeDraft } from '@/types';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
@@ -45,7 +46,9 @@ function TabFooterNav({ current, onNavigate }: { current: string; onNavigate: (t
   const prev = idx > 0 ? TAB_ORDER[idx - 1] : null;
   const next = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
   return (
-    <div className="mt-8 flex items-center justify-between border-t border-border pt-4">
+    // Sticky to the viewport bottom, not the end of the tab's content -- on a
+    // long tab (e.g. the editor) this stays reachable without scrolling down.
+    <div className="sticky bottom-0 z-10 mt-8 flex items-center justify-between border-t border-border bg-background/95 px-1 py-3 shadow-[0_-4px_12px_-8px_rgba(0,0,0,0.15)] backdrop-blur">
       {prev ? (
         <Button variant="outline" className="gap-2" onClick={() => onNavigate(prev.key)}>
           <ArrowLeft className="h-4 w-4" /> {prev.label}
@@ -60,9 +63,10 @@ function TabFooterNav({ current, onNavigate }: { current: string; onNavigate: (t
   );
 }
 
-export default function ApplicationWorkspacePage() {
+function ApplicationWorkspaceContent() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const searchParams = useSearchParams();
 
   const [app, setApp] = useState<ApplicationData | null>(null);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
@@ -73,7 +77,16 @@ export default function ApplicationWorkspacePage() {
   const [generating, setGenerating] = useState(false);
   const [draft, setDraft] = useState<TailoredResumeDraft | null>(null);
   const [letter, setLetter] = useState<CoverLetterDraft | null>(null);
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(() => {
+    const requested = searchParams.get('tab');
+    return requested && TAB_ORDER.some((t) => t.key === requested) ? requested : 'overview';
+  });
+  const [genSelection, setGenSelection] = useState<{ resume: boolean; coverLetter: boolean }>({ resume: true, coverLetter: true });
+
+  function goToGenerate(selection: { resume: boolean; coverLetter: boolean }) {
+    setGenSelection(selection);
+    setTab('generate');
+  }
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/applications/${id}`);
@@ -160,6 +173,7 @@ export default function ApplicationWorkspacePage() {
 
   return (
     <div className="space-y-6">
+      <FirstVisitTour />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{app.job.title} — {app.job.company}</h1>
@@ -199,8 +213,8 @@ export default function ApplicationWorkspacePage() {
                   <div className="rounded-md bg-success/10 p-4">
                     <p className="font-medium text-success">Your resume is a suitable match for this position.</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button onClick={() => setTab('generate')}>Generate Tailored Resume</Button>
-                      <Button variant="outline" onClick={() => setTab('generate')}>Generate Cover Letter</Button>
+                      <Button onClick={() => goToGenerate({ resume: true, coverLetter: false })}>Generate Tailored Resume</Button>
+                      <Button variant="outline" onClick={() => goToGenerate({ resume: false, coverLetter: true })}>Generate Cover Letter</Button>
                       <Button variant="ghost" onClick={() => setTab('match')}>View Match Analysis</Button>
                     </div>
                   </div>
@@ -235,7 +249,7 @@ export default function ApplicationWorkspacePage() {
         </TabsContent>
 
         <TabsContent value="generate" className="mt-6">
-          <GenerationPanel onGenerate={handleGenerate} generating={generating} />
+          <GenerationPanel key={`${genSelection.resume}-${genSelection.coverLetter}`} onGenerate={handleGenerate} generating={generating} initialSelection={genSelection} />
           <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
@@ -272,5 +286,13 @@ export default function ApplicationWorkspacePage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function ApplicationWorkspacePage() {
+  return (
+    <Suspense fallback={<Loader2 className="h-4 w-4 animate-spin" />}>
+      <ApplicationWorkspaceContent />
+    </Suspense>
   );
 }

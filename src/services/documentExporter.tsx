@@ -1,7 +1,8 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from '@react-pdf/renderer';
 import { Document as DocxDocument, Packer, Paragraph, TextRun } from 'docx';
-import { CandidateProfile, CoverLetterDraft, DesignTemplate, TailoredResumeDraft } from '@/types';
+import { CandidateProfile, CoverLetterDraft, DesignTemplate, ResumeSectionKey, TailoredResumeDraft } from '@/types';
+import { resolveSectionLayout } from '@/features/document-editor/DocumentPreview';
 
 const DEFAULT_DESIGN: DesignTemplate = {
   name: 'ATS Professional', industry: 'general', primaryColor: '#111827', secondaryColor: '#374151',
@@ -53,6 +54,73 @@ function entryTitleLine(title: string, company: string): string {
 
 function ResumePDF({ profile, draft, design }: { profile: CandidateProfile; draft: TailoredResumeDraft; design: DesignTemplate }) {
   const s = pdfStyles(design);
+  const { order, included } = resolveSectionLayout(draft);
+
+  const sections: Partial<Record<ResumeSectionKey, React.ReactNode>> = {
+    summary: draft.summary.after && (
+      <View>
+        <Text style={s.sectionTitle}>Summary</Text>
+        <Text style={s.paragraph}>{draft.summary.after}</Text>
+      </View>
+    ),
+    skills: draft.skills.after.length > 0 && (
+      <View>
+        <Text style={s.sectionTitle}>Skills</Text>
+        <Text style={s.paragraph}>{draft.skills.after.join('  •  ')}</Text>
+      </View>
+    ),
+    experience: draft.experiences.length > 0 && (
+      <View>
+        <Text style={s.sectionTitle}>Experience</Text>
+        {draft.experiences.map((e, i) => (
+          <View key={i} wrap={false}>
+            {entryTitleLine(e.entry.title, e.entry.company) && <Text style={s.entryHeader}>{entryTitleLine(e.entry.title, e.entry.company)}</Text>}
+            {(e.entry.startDate || e.entry.endDate || e.entry.location) && (
+              <Text style={s.entrySub}>
+                {[e.entry.startDate && `${e.entry.startDate} – ${e.entry.endDate || 'Present'}`, e.entry.location].filter(Boolean).join(' · ')}
+              </Text>
+            )}
+            {e.afterBullets.filter(Boolean).map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
+          </View>
+        ))}
+      </View>
+    ),
+    projects: draft.projects.length > 0 && (
+      <View>
+        <Text style={s.sectionTitle}>Projects</Text>
+        {draft.projects.map((p, i) => (
+          <View key={i} wrap={false}>
+            <Text style={s.entryHeader}>{p.entry.name}{p.entry.technologies.length ? ` (${p.entry.technologies.join(', ')})` : ''}</Text>
+            {p.afterBullets.filter(Boolean).map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
+          </View>
+        ))}
+      </View>
+    ),
+    education: draft.education.length > 0 && (
+      <View>
+        <Text style={s.sectionTitle}>Education</Text>
+        {draft.education.map((e, i) => (
+          <View key={i} wrap={false}>
+            {(e.degree || e.field) && <Text style={s.entryHeader}>{[e.degree, e.field].filter(Boolean).join(', ')}</Text>}
+            {(e.institution || e.endDate) && <Text style={s.entrySub}>{[e.institution, e.endDate].filter(Boolean).join(' · ')}</Text>}
+          </View>
+        ))}
+      </View>
+    ),
+    certifications: draft.certifications.length > 0 && (
+      <View>
+        <Text style={s.sectionTitle}>Certifications</Text>
+        {draft.certifications.map((c, i) => <Text key={i} style={s.bullet}>• {c.name}{c.issuer ? ` — ${c.issuer}` : ''}</Text>)}
+      </View>
+    ),
+    achievements: draft.achievements && draft.achievements.length > 0 && (
+      <View>
+        <Text style={s.sectionTitle}>Achievements & Leadership</Text>
+        {draft.achievements.map((a, i) => <Text key={i} style={s.bullet}>• {a}</Text>)}
+      </View>
+    ),
+  };
+
   return (
     <Document>
       <Page size="A4" style={s.page}>
@@ -62,67 +130,7 @@ function ResumePDF({ profile, draft, design }: { profile: CandidateProfile; draf
           {[profile.location, profile.email, profile.phone, profile.linkedin, profile.github, profile.portfolio].filter(Boolean).join('  |  ')}
         </Text>
 
-        {draft.summary.after && (
-          <View>
-            <Text style={s.sectionTitle}>Summary</Text>
-            <Text style={s.paragraph}>{draft.summary.after}</Text>
-          </View>
-        )}
-
-        {draft.skills.after.length > 0 && (
-          <View>
-            <Text style={s.sectionTitle}>Skills</Text>
-            <Text style={s.paragraph}>{draft.skills.after.join('  •  ')}</Text>
-          </View>
-        )}
-
-        {draft.experiences.length > 0 && (
-          <View>
-            <Text style={s.sectionTitle}>Experience</Text>
-            {draft.experiences.map((e, i) => (
-              <View key={i} wrap={false}>
-                {entryTitleLine(e.entry.title, e.entry.company) && <Text style={s.entryHeader}>{entryTitleLine(e.entry.title, e.entry.company)}</Text>}
-                {(e.entry.startDate || e.entry.endDate || e.entry.location) && (
-                  <Text style={s.entrySub}>
-                    {[e.entry.startDate && `${e.entry.startDate} – ${e.entry.endDate || 'Present'}`, e.entry.location].filter(Boolean).join(' · ')}
-                  </Text>
-                )}
-                {e.afterBullets.filter(Boolean).map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {draft.projects.length > 0 && (
-          <View>
-            <Text style={s.sectionTitle}>Projects</Text>
-            {draft.projects.map((p, i) => (
-              <View key={i} wrap={false}>
-                <Text style={s.entryHeader}>{p.entry.name}{p.entry.technologies.length ? ` (${p.entry.technologies.join(', ')})` : ''}</Text>
-                {p.afterBullets.filter(Boolean).map((b, bi) => <Text key={bi} style={s.bullet}>• {b}</Text>)}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {draft.education.length > 0 && (
-          <View>
-            <Text style={s.sectionTitle}>Education</Text>
-            {draft.education.map((e, i) => (
-              <View key={i} wrap={false}>
-                {(e.degree || e.field) && <Text style={s.entryHeader}>{[e.degree, e.field].filter(Boolean).join(', ')}</Text>}
-                {(e.institution || e.endDate) && <Text style={s.entrySub}>{[e.institution, e.endDate].filter(Boolean).join(' · ')}</Text>}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {draft.certifications.length > 0 && (
-          <View>
-            <Text style={s.sectionTitle}>Certifications</Text>
-            {draft.certifications.map((c, i) => <Text key={i} style={s.bullet}>• {c.name}{c.issuer ? ` — ${c.issuer}` : ''}</Text>)}
-          </View>
-        )}
+        {order.filter((key) => included[key]).map((key) => sections[key] && <React.Fragment key={key}>{sections[key]}</React.Fragment>)}
       </Page>
     </Document>
   );
@@ -194,50 +202,75 @@ export async function renderResumeDOCX(profile: CandidateProfile, draft: Tailore
     children.push(new Paragraph({ children: [new TextRun({ text: contactLine, size: baseSize - 2, color: '4B5563', font: d.font })] }));
   }
 
+  const sectionParagraphs: Partial<Record<ResumeSectionKey, Paragraph[]>> = {};
+
   if (draft.summary.after) {
-    children.push(docxHeading('Summary', d, baseSize + 2));
-    children.push(new Paragraph({ children: [new TextRun({ text: draft.summary.after, size: baseSize, font: d.font })] }));
+    sectionParagraphs.summary = [
+      docxHeading('Summary', d, baseSize + 2),
+      new Paragraph({ children: [new TextRun({ text: draft.summary.after, size: baseSize, font: d.font })] }),
+    ];
   }
   if (draft.skills.after.length) {
-    children.push(docxHeading('Skills', d, baseSize + 2));
-    children.push(new Paragraph({ children: [new TextRun({ text: draft.skills.after.join(', '), size: baseSize, font: d.font })] }));
+    sectionParagraphs.skills = [
+      docxHeading('Skills', d, baseSize + 2),
+      new Paragraph({ children: [new TextRun({ text: draft.skills.after.join(', '), size: baseSize, font: d.font })] }),
+    ];
   }
   if (draft.experiences.length) {
-    children.push(docxHeading('Experience', d, baseSize + 2));
+    const paras: Paragraph[] = [docxHeading('Experience', d, baseSize + 2)];
     for (const e of draft.experiences) {
       const titleLine = e.entry.title && e.entry.company ? `${e.entry.title} — ${e.entry.company}` : e.entry.title || e.entry.company;
-      if (titleLine) children.push(new Paragraph({ children: [new TextRun({ text: titleLine, bold: true, size: baseSize, font: d.font })] }));
+      if (titleLine) paras.push(new Paragraph({ children: [new TextRun({ text: titleLine, bold: true, size: baseSize, font: d.font })] }));
       const dateLine = [e.entry.startDate && `${e.entry.startDate} – ${e.entry.endDate || 'Present'}`, e.entry.location].filter(Boolean).join(' · ');
-      if (dateLine) children.push(new Paragraph({ children: [new TextRun({ text: dateLine, italics: true, size: baseSize - 2, color: '4B5563', font: d.font })] }));
+      if (dateLine) paras.push(new Paragraph({ children: [new TextRun({ text: dateLine, italics: true, size: baseSize - 2, color: '4B5563', font: d.font })] }));
       for (const b of e.afterBullets.filter(Boolean)) {
-        children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: b, size: baseSize, font: d.font })] }));
+        paras.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: b, size: baseSize, font: d.font })] }));
       }
     }
+    sectionParagraphs.experience = paras;
   }
   if (draft.projects.length) {
-    children.push(docxHeading('Projects', d, baseSize + 2));
+    const paras: Paragraph[] = [docxHeading('Projects', d, baseSize + 2)];
     for (const p of draft.projects) {
       const label = p.entry.technologies.length ? `${p.entry.name} (${p.entry.technologies.join(', ')})` : p.entry.name;
-      children.push(new Paragraph({ children: [new TextRun({ text: label, bold: true, size: baseSize, font: d.font })] }));
+      paras.push(new Paragraph({ children: [new TextRun({ text: label, bold: true, size: baseSize, font: d.font })] }));
       for (const b of p.afterBullets.filter(Boolean)) {
-        children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: b, size: baseSize, font: d.font })] }));
+        paras.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: b, size: baseSize, font: d.font })] }));
       }
     }
+    sectionParagraphs.projects = paras;
   }
   if (draft.education.length) {
-    children.push(docxHeading('Education', d, baseSize + 2));
+    const paras: Paragraph[] = [docxHeading('Education', d, baseSize + 2)];
     for (const e of draft.education) {
       const degreeLine = [e.degree, e.field].filter(Boolean).join(', ');
-      if (degreeLine) children.push(new Paragraph({ children: [new TextRun({ text: degreeLine, bold: true, size: baseSize, font: d.font })] }));
+      if (degreeLine) paras.push(new Paragraph({ children: [new TextRun({ text: degreeLine, bold: true, size: baseSize, font: d.font })] }));
       const instLine = [e.institution, e.endDate].filter(Boolean).join(' · ');
-      if (instLine) children.push(new Paragraph({ children: [new TextRun({ text: instLine, size: baseSize - 2, color: '4B5563', font: d.font })] }));
+      if (instLine) paras.push(new Paragraph({ children: [new TextRun({ text: instLine, size: baseSize - 2, color: '4B5563', font: d.font })] }));
     }
+    sectionParagraphs.education = paras;
   }
   if (draft.certifications.length) {
-    children.push(docxHeading('Certifications', d, baseSize + 2));
+    const paras: Paragraph[] = [docxHeading('Certifications', d, baseSize + 2)];
     for (const c of draft.certifications) {
-      children.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: c.name + (c.issuer ? ` — ${c.issuer}` : ''), size: baseSize, font: d.font })] }));
+      paras.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: c.name + (c.issuer ? ` — ${c.issuer}` : ''), size: baseSize, font: d.font })] }));
     }
+    sectionParagraphs.certifications = paras;
+  }
+  if (draft.achievements && draft.achievements.length) {
+    const paras: Paragraph[] = [docxHeading('Achievements & Leadership', d, baseSize + 2)];
+    for (const a of draft.achievements) {
+      paras.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun({ text: a, size: baseSize, font: d.font })] }));
+    }
+    sectionParagraphs.achievements = paras;
+  }
+
+  const { order } = resolveSectionLayout(draft);
+  const includedForOrder = draft.includedSections || { summary: true, skills: true, experience: true, projects: true, education: true, certifications: true, achievements: true };
+  for (const key of order) {
+    if (!includedForOrder[key]) continue;
+    const paras = sectionParagraphs[key];
+    if (paras) children.push(...paras);
   }
 
   const doc = new DocxDocument({ sections: [{ children }] });

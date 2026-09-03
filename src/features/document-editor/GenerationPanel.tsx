@@ -16,22 +16,35 @@ const LANGUAGES = ['English', 'German', 'French', 'Spanish'];
 export function GenerationPanel({
   onGenerate,
   generating,
+  initialSelection,
 }: {
   onGenerate: (options: GenerationOptions, generate: { resume: boolean; coverLetter: boolean }) => void;
   generating?: boolean;
+  /** Pre-picks what to generate (e.g. "Generate Cover Letter" clicked from Overview) so this panel only asks for the generation details, not the same choice twice. */
+  initialSelection?: { resume: boolean; coverLetter: boolean };
 }) {
   const [options, setOptions] = useState<GenerationOptions>({ tone: 'professional', length: 'medium', language: 'English', optimizationLevel: 'balanced' });
-  const [genResume, setGenResume] = useState(true);
-  const [genCover, setGenCover] = useState(true);
+  const [genResume, setGenResume] = useState(initialSelection?.resume ?? true);
+  const [genCover, setGenCover] = useState(initialSelection?.coverLetter ?? true);
+  const preselected = !!initialSelection && !(initialSelection.resume && initialSelection.coverLetter);
 
   return (
     <Card>
       <CardHeader><CardTitle className="text-base">Generate Documents</CardTitle></CardHeader>
       <CardContent className="space-y-5">
-        <div className="space-y-2">
-          <Label className="flex items-center gap-2"><Checkbox checked={genResume} onChange={(e) => setGenResume(e.target.checked)} /> Tailored Resume</Label>
-          <Label className="flex items-center gap-2"><Checkbox checked={genCover} onChange={(e) => setGenCover(e.target.checked)} /> Cover Letter</Label>
-        </div>
+        {preselected ? (
+          <p className="text-sm text-muted-foreground">
+            Generating: <span className="font-medium text-foreground">{[genResume && 'Tailored Resume', genCover && 'Cover Letter'].filter(Boolean).join(' + ')}</span>.{' '}
+            <button type="button" className="text-primary underline-offset-4 hover:underline" onClick={() => { setGenResume(true); setGenCover(true); }}>
+              Generate both instead
+            </button>
+          </p>
+        ) : (
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2"><Checkbox checked={genResume} onChange={(e) => setGenResume(e.target.checked)} /> Tailored Resume</Label>
+            <Label className="flex items-center gap-2"><Checkbox checked={genCover} onChange={(e) => setGenCover(e.target.checked)} /> Cover Letter</Label>
+          </div>
+        )}
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
