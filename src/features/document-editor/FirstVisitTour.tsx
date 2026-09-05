@@ -123,6 +123,7 @@ export function FirstVisitTour({ currentTab, onNavigateTab }: { currentTab: stri
 
   function dismiss() {
     setActive(false);
+    onNavigateTab('overview');
     try {
       localStorage.setItem(STORAGE_KEY, 'dismissed');
     } catch {

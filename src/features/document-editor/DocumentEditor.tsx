@@ -101,16 +101,22 @@ export function DocumentEditor({
         <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">You have 2 documents -- switch between them:</p>
       )}
       <TabsList className="h-auto p-1.5" data-tour="doc-tabs">
-        {localDraft && (
-          <TabsTrigger value="resume" className="inline-flex items-center gap-1.5 px-4 py-2 text-sm">
-            <FileText className="h-4 w-4" /> Resume
-          </TabsTrigger>
-        )}
-        {localLetter && (
-          <TabsTrigger value="cover" className="inline-flex items-center gap-1.5 px-4 py-2 text-sm">
-            <Mail className="h-4 w-4" /> Cover Letter
-          </TabsTrigger>
-        )}
+        <TabsTrigger
+          value="resume"
+          disabled={!localDraft}
+          title={localDraft ? undefined : 'Not generated yet -- generate a tailored resume first'}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm"
+        >
+          <FileText className="h-4 w-4" /> Resume
+        </TabsTrigger>
+        <TabsTrigger
+          value="cover"
+          disabled={!localLetter}
+          title={localLetter ? undefined : 'Not generated yet -- generate a cover letter first'}
+          className="inline-flex items-center gap-1.5 px-4 py-2 text-sm"
+        >
+          <Mail className="h-4 w-4" /> Cover Letter
+        </TabsTrigger>
       </TabsList>
 
       {localDraft && (

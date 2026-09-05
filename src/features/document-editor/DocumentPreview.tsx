@@ -178,8 +178,13 @@ export function ResumePreview({
   function handleDrop(targetKey: ResumeSectionKey) {
     setDragOverKey(null);
     if (!dragKey || dragKey === targetKey || !onReorderSections) { setDragKey(null); return; }
+    const movingDown = order.indexOf(dragKey) < order.indexOf(targetKey);
     const next = order.filter((k) => k !== dragKey);
-    const targetIdx = next.indexOf(targetKey);
+    // Dropping onto a target below the dragged item should land it AFTER
+    // that target -- inserting before it (the naive approach) is a no-op
+    // when dropping on the very next item, since removal already shifted
+    // everything up by one.
+    const targetIdx = next.indexOf(targetKey) + (movingDown ? 1 : 0);
     next.splice(targetIdx, 0, dragKey);
     onReorderSections(next);
     setDragKey(null);
