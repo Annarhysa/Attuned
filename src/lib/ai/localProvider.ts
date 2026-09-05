@@ -1,6 +1,6 @@
 import { AIProvider } from './provider';
 import { detectNiche, getNiche } from './niches';
-import { containsTerm, extractPhrases, normalize, splitSentences } from './textUtils';
+import { containsTerm, extractGenericRequirements, extractPhrases, normalize, splitSentences } from './textUtils';
 import {
   CandidateProfile,
   CoverLetterDraft,
@@ -9,6 +9,7 @@ import {
   GenerationOptions,
   JobAnalysis,
   MatchAnalysis,
+  ResumeSectionKey,
   TailoredResumeDraft,
 } from '@/types';
 
@@ -144,6 +145,21 @@ export class LocalHeuristicProvider implements AIProvider {
         preferred.push(canonical);
       } else {
         required.push(canonical);
+      }
+    }
+
+    // The per-industry dictionary is only fully seeded for tech/AI/fintech --
+    // other niches are thin stubs, so a JD in those fields often yields
+    // almost nothing here. Top up with niche-agnostic extraction (lead-in
+    // phrases, acronyms) so the match/keyword-map views always have real
+    // requirements to show, not an empty list.
+    if (required.length + preferred.length < 4) {
+      const existing = new Set([...required, ...preferred].map((r) => normalize(r)));
+      for (const term of extractGenericRequirements(rawText, 10)) {
+        if (!existing.has(normalize(term))) {
+          required.push(term);
+          existing.add(normalize(term));
+        }
       }
     }
 
@@ -426,6 +442,22 @@ export class LocalHeuristicProvider implements AIProvider {
 
     const omittedKeywords = match.evidence.filter((e) => e.status === 'missing').map((e) => e.requirement);
 
+    // Suggested order: lead with the sections that carry the most evidence
+    // (non-empty ones first, in the usual resume convention), followed by
+    // whatever's left. The user can still reorder/toggle this in the editor.
+    const suggestedOrder: ResumeSectionKey[] = ['summary', 'skills', 'experience', 'projects', 'education', 'certifications', 'achievements'];
+    const nonEmpty: Record<ResumeSectionKey, boolean> = {
+      summary: !!afterSummary,
+      skills: afterSkills.length > 0,
+      experience: scoredExperiences.length > 0,
+      projects: scoredProjects.length > 0,
+      education: profile.education.length > 0,
+      certifications: profile.certifications.length > 0,
+      achievements: profile.achievements.length > 0,
+    };
+    const sectionOrder = [...suggestedOrder].sort((a, b) => Number(nonEmpty[b]) - Number(nonEmpty[a]));
+    const includedSections = Object.fromEntries(suggestedOrder.map((k) => [k, true])) as Record<ResumeSectionKey, boolean>;
+
     return {
       headline: profile.professionalTitle,
       summary: { before: beforeSummary, after: afterSummary, changed: afterSummary !== beforeSummary },
@@ -434,7 +466,10 @@ export class LocalHeuristicProvider implements AIProvider {
       projects: scoredProjects.map(({ score, ...rest }) => rest),
       education: profile.education,
       certifications: profile.certifications,
+      achievements: profile.achievements,
       omittedKeywords,
+      sectionOrder,
+      includedSections,
     };
   }
 

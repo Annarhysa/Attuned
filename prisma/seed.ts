@@ -101,6 +101,23 @@ const templates = [
     accentStyle: 'none',
     atsSafe: true,
   },
+  {
+    // Mirrors the dense, black-and-white, underlined-headers look of the
+    // classic Overleaf/LaTeX academic CV templates (moderncv, Jake's Resume,
+    // Awesome-CV) -- serif type, tight spacing, no color accents.
+    name: 'Overleaf Academic',
+    industry: 'academic',
+    primaryColor: '#000000',
+    secondaryColor: '#333333',
+    font: 'Georgia',
+    fontSize: 'small',
+    spacing: 'compact',
+    layout: 'single-column',
+    headerStyle: 'classic',
+    sectionStyle: 'underline',
+    accentStyle: 'none',
+    atsSafe: true,
+  },
 ];
 
 async function main() {

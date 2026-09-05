@@ -21,12 +21,22 @@ const NAV = [
 export function Sidebar() {
   const pathname = usePathname() || '';
 
-  // Highlight exactly one item: the nav entry whose href is the longest
-  // prefix match for the current path (so /applications/new lights up
-  // "Resume Builder" only, not "Applications" too).
-  const activeHref = NAV
-    .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  // /applications is special-cased: the bare list page is "Applications",
+  // but everything under it (/applications/new to start one, or
+  // /applications/[id] to actually build/edit a resume) is where resume
+  // building happens, so it should light up "Resume Builder" instead.
+  let activeHref: string | undefined;
+  if (pathname === '/applications') {
+    activeHref = '/applications';
+  } else if (pathname.startsWith('/applications/')) {
+    activeHref = '/applications/new';
+  } else {
+    // Everything else: longest-prefix match among the remaining nav items.
+    activeHref = NAV
+      .filter((item) => item.href !== '/applications' && item.href !== '/applications/new')
+      .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  }
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-secondary/30">

@@ -140,6 +140,8 @@ export interface ResumeSection {
   changed: boolean;
 }
 
+export type ResumeSectionKey = 'summary' | 'skills' | 'experience' | 'projects' | 'education' | 'certifications' | 'achievements';
+
 export interface TailoredResumeDraft {
   headline: string;
   summary: { before: string; after: string; changed: boolean };
@@ -148,7 +150,11 @@ export interface TailoredResumeDraft {
   projects: { entry: ProjectEntry; beforeBullets: string[]; afterBullets: string[]; changed: boolean }[];
   education: EducationEntry[];
   certifications: CertificationEntry[];
+  achievements: string[];
   omittedKeywords: string[]; // JD keywords intentionally NOT added (no evidence)
+  /** Suggested order (AI-picked); the user can reorder and toggle inclusion in the editor. */
+  sectionOrder: ResumeSectionKey[];
+  includedSections: Record<ResumeSectionKey, boolean>;
 }
 
 export interface CoverLetterDraft {

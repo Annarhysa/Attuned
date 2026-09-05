@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { Suspense, useEffect, useState, useCallback } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { DocumentEditor } from '@/features/document-editor/DocumentEditor';
 import { DesignSelector } from '@/features/design-engine/DesignSelector';
 import { ATSAnalyzerPanel } from '@/features/ats-analyzer/ATSAnalyzerPanel';
 import { ExportPanel } from '@/features/document-editor/ExportPanel';
+import { FirstVisitTour } from '@/features/document-editor/FirstVisitTour';
 import { safeJsonParse } from '@/lib/utils';
 import { CandidateProfile, CoverLetterDraft, DesignTemplate, GenerationOptions, JobAnalysis, MatchAnalysis, TailoredResumeDraft } from '@/types';
 import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
@@ -45,7 +46,9 @@ function TabFooterNav({ current, onNavigate }: { current: string; onNavigate: (t
   const prev = idx > 0 ? TAB_ORDER[idx - 1] : null;
   const next = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
   return (
-    <div className="mt-8 flex items-center justify-between border-t border-border pt-4">
+    // Lives at the top of the tab content, right under the tab list -- always
+    // visible on landing, no scrolling (up or down) required to find it.
+    <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
       {prev ? (
         <Button variant="outline" className="gap-2" onClick={() => onNavigate(prev.key)}>
           <ArrowLeft className="h-4 w-4" /> {prev.label}
@@ -60,9 +63,10 @@ function TabFooterNav({ current, onNavigate }: { current: string; onNavigate: (t
   );
 }
 
-export default function ApplicationWorkspacePage() {
+function ApplicationWorkspaceContent() {
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const searchParams = useSearchParams();
 
   const [app, setApp] = useState<ApplicationData | null>(null);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
@@ -73,7 +77,16 @@ export default function ApplicationWorkspacePage() {
   const [generating, setGenerating] = useState(false);
   const [draft, setDraft] = useState<TailoredResumeDraft | null>(null);
   const [letter, setLetter] = useState<CoverLetterDraft | null>(null);
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = useState(() => {
+    const requested = searchParams.get('tab');
+    return requested && TAB_ORDER.some((t) => t.key === requested) ? requested : 'overview';
+  });
+  const [genSelection, setGenSelection] = useState<{ resume: boolean; coverLetter: boolean }>({ resume: true, coverLetter: true });
+
+  function goToGenerate(selection: { resume: boolean; coverLetter: boolean }) {
+    setGenSelection(selection);
+    setTab('generate');
+  }
 
   const load = useCallback(async () => {
     const res = await fetch(`/api/applications/${id}`);
@@ -160,6 +173,7 @@ export default function ApplicationWorkspacePage() {
 
   return (
     <div className="space-y-6">
+      <FirstVisitTour currentTab={tab} onNavigateTab={setTab} />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{app.job.title} — {app.job.company}</h1>
@@ -172,6 +186,7 @@ export default function ApplicationWorkspacePage() {
         <TabsList>
           {TAB_ORDER.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
         </TabsList>
+        <TabFooterNav current={tab} onNavigate={setTab} />
 
         <TabsContent value="overview" className="mt-6 space-y-4">
           {loadingMatch && (
@@ -180,7 +195,7 @@ export default function ApplicationWorkspacePage() {
             </p>
           )}
           {effectiveMatch && (
-            <Card>
+            <Card data-tour="match-score">
               <CardContent className="space-y-4 py-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -196,11 +211,12 @@ export default function ApplicationWorkspacePage() {
                 </div>
 
                 {suitable ? (
-                  <div className="rounded-md bg-success/10 p-4">
+                  <div className="rounded-md bg-success/10 p-4" data-tour="generate-buttons">
                     <p className="font-medium text-success">Your resume is a suitable match for this position.</p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Button onClick={() => setTab('generate')}>Generate Tailored Resume</Button>
-                      <Button variant="outline" onClick={() => setTab('generate')}>Generate Cover Letter</Button>
+                      <Button onClick={() => goToGenerate({ resume: true, coverLetter: false })}>Generate Tailored Resume</Button>
+                      <Button variant="outline" onClick={() => goToGenerate({ resume: false, coverLetter: true })}>Generate Cover Letter</Button>
+                      <Button variant="outline" onClick={() => goToGenerate({ resume: true, coverLetter: true })}>Generate Both</Button>
                       <Button variant="ghost" onClick={() => setTab('match')}>View Match Analysis</Button>
                     </div>
                   </div>
@@ -217,7 +233,6 @@ export default function ApplicationWorkspacePage() {
               </CardContent>
             </Card>
           )}
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="match" className="mt-6">
@@ -226,17 +241,18 @@ export default function ApplicationWorkspacePage() {
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Running match analysis...</p>
           )}
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="keywords" className="mt-6">
-          {effectiveMatch ? <KeywordMap match={effectiveMatch} /> : <p className="text-sm text-muted-foreground">Run match analysis first.</p>}
-          <TabFooterNav current={tab} onNavigate={setTab} />
+          {effectiveMatch ? (
+            <KeywordMap match={effectiveMatch} onGenerate={() => goToGenerate({ resume: true, coverLetter: true })} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Run match analysis first.</p>
+          )}
         </TabsContent>
 
         <TabsContent value="generate" className="mt-6">
-          <GenerationPanel onGenerate={handleGenerate} generating={generating} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
+          <GenerationPanel key={`${genSelection.resume}-${genSelection.coverLetter}`} onGenerate={handleGenerate} generating={generating} initialSelection={genSelection} />
         </TabsContent>
 
         <TabsContent value="editor" className="mt-6">
@@ -253,24 +269,28 @@ export default function ApplicationWorkspacePage() {
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading your profile...</p>
           )}
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="design" className="mt-6">
           <DesignSelector applicationId={id} selected={app.designTemplate} onSelect={handleSelectDesign} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="ats" className="mt-6">
           <ATSAnalyzerPanel applicationId={id} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="export" className="mt-6">
           <ExportPanel applicationId={id} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function ApplicationWorkspacePage() {
+  return (
+    <Suspense fallback={<Loader2 className="h-4 w-4 animate-spin" />}>
+      <ApplicationWorkspaceContent />
+    </Suspense>
   );
 }
