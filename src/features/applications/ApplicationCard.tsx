@@ -72,7 +72,7 @@ export function ApplicationCard({
           )}
         </div>
         <div className="mt-4 flex items-center gap-2">
-          <Link href={`/applications/${id}?tab=editor`} className="flex-1">
+          <Link href={`/applications/${id}`} className="flex-1">
             <Button size="sm" variant="outline" className="w-full">Open</Button>
           </Link>
           <Button size="icon" variant="ghost" disabled={busy} onClick={handleDuplicate} title="Duplicate">

@@ -46,7 +46,7 @@ export function ExportPanel({ applicationId }: { applicationId: string }) {
   }
 
   return (
-    <Card>
+    <Card data-tour="export-panel">
       <CardHeader><CardTitle className="text-base">Export</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         {error && <p className="text-sm text-destructive">{error}</p>}

@@ -46,9 +46,9 @@ function TabFooterNav({ current, onNavigate }: { current: string; onNavigate: (t
   const prev = idx > 0 ? TAB_ORDER[idx - 1] : null;
   const next = idx < TAB_ORDER.length - 1 ? TAB_ORDER[idx + 1] : null;
   return (
-    // Sticky to the viewport bottom, not the end of the tab's content -- on a
-    // long tab (e.g. the editor) this stays reachable without scrolling down.
-    <div className="sticky bottom-0 z-10 mt-8 flex items-center justify-between border-t border-border bg-background/95 px-1 py-3 shadow-[0_-4px_12px_-8px_rgba(0,0,0,0.15)] backdrop-blur">
+    // Lives at the top of the tab content, right under the tab list -- always
+    // visible on landing, no scrolling (up or down) required to find it.
+    <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
       {prev ? (
         <Button variant="outline" className="gap-2" onClick={() => onNavigate(prev.key)}>
           <ArrowLeft className="h-4 w-4" /> {prev.label}
@@ -173,7 +173,7 @@ function ApplicationWorkspaceContent() {
 
   return (
     <div className="space-y-6">
-      <FirstVisitTour />
+      <FirstVisitTour currentTab={tab} onNavigateTab={setTab} />
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{app.job.title} — {app.job.company}</h1>
@@ -186,6 +186,7 @@ function ApplicationWorkspaceContent() {
         <TabsList>
           {TAB_ORDER.map((t) => <TabsTrigger key={t.key} value={t.key}>{t.label}</TabsTrigger>)}
         </TabsList>
+        <TabFooterNav current={tab} onNavigate={setTab} />
 
         <TabsContent value="overview" className="mt-6 space-y-4">
           {loadingMatch && (
@@ -194,7 +195,7 @@ function ApplicationWorkspaceContent() {
             </p>
           )}
           {effectiveMatch && (
-            <Card>
+            <Card data-tour="match-score">
               <CardContent className="space-y-4 py-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -210,11 +211,12 @@ function ApplicationWorkspaceContent() {
                 </div>
 
                 {suitable ? (
-                  <div className="rounded-md bg-success/10 p-4">
+                  <div className="rounded-md bg-success/10 p-4" data-tour="generate-buttons">
                     <p className="font-medium text-success">Your resume is a suitable match for this position.</p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <Button onClick={() => goToGenerate({ resume: true, coverLetter: false })}>Generate Tailored Resume</Button>
                       <Button variant="outline" onClick={() => goToGenerate({ resume: false, coverLetter: true })}>Generate Cover Letter</Button>
+                      <Button variant="outline" onClick={() => goToGenerate({ resume: true, coverLetter: true })}>Generate Both</Button>
                       <Button variant="ghost" onClick={() => setTab('match')}>View Match Analysis</Button>
                     </div>
                   </div>
@@ -231,7 +233,6 @@ function ApplicationWorkspaceContent() {
               </CardContent>
             </Card>
           )}
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="match" className="mt-6">
@@ -240,17 +241,18 @@ function ApplicationWorkspaceContent() {
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Running match analysis...</p>
           )}
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="keywords" className="mt-6">
-          {effectiveMatch ? <KeywordMap match={effectiveMatch} /> : <p className="text-sm text-muted-foreground">Run match analysis first.</p>}
-          <TabFooterNav current={tab} onNavigate={setTab} />
+          {effectiveMatch ? (
+            <KeywordMap match={effectiveMatch} onGenerate={() => goToGenerate({ resume: true, coverLetter: true })} />
+          ) : (
+            <p className="text-sm text-muted-foreground">Run match analysis first.</p>
+          )}
         </TabsContent>
 
         <TabsContent value="generate" className="mt-6">
           <GenerationPanel key={`${genSelection.resume}-${genSelection.coverLetter}`} onGenerate={handleGenerate} generating={generating} initialSelection={genSelection} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="editor" className="mt-6">
@@ -267,22 +269,18 @@ function ApplicationWorkspaceContent() {
           ) : (
             <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading your profile...</p>
           )}
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="design" className="mt-6">
           <DesignSelector applicationId={id} selected={app.designTemplate} onSelect={handleSelectDesign} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="ats" className="mt-6">
           <ATSAnalyzerPanel applicationId={id} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
 
         <TabsContent value="export" className="mt-6">
           <ExportPanel applicationId={id} />
-          <TabFooterNav current={tab} onNavigate={setTab} />
         </TabsContent>
       </Tabs>
     </div>

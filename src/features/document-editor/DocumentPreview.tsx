@@ -1,7 +1,21 @@
+'use client';
+
+import { useState } from 'react';
 import { CandidateProfile, CoverLetterDraft, DesignTemplate, ResumeSectionKey, TailoredResumeDraft } from '@/types';
+import { GripVertical, Eye, EyeOff } from 'lucide-react';
 
 export const DEFAULT_SECTION_ORDER: ResumeSectionKey[] = ['summary', 'skills', 'experience', 'projects', 'education', 'certifications', 'achievements'];
 const ALL_INCLUDED: Record<ResumeSectionKey, boolean> = { summary: true, skills: true, experience: true, projects: true, education: true, certifications: true, achievements: true };
+
+export const SECTION_LABELS: Record<ResumeSectionKey, string> = {
+  summary: 'Summary',
+  skills: 'Skills',
+  experience: 'Experience',
+  projects: 'Projects',
+  education: 'Education',
+  certifications: 'Certifications',
+  achievements: 'Achievements & Leadership',
+};
 
 /** Drafts saved before section ordering existed won't have these fields -- fall back to showing everything in the default order. */
 export function resolveSectionLayout(draft: TailoredResumeDraft): { order: ResumeSectionKey[]; included: Record<ResumeSectionKey, boolean> } {
@@ -46,6 +60,9 @@ export function ResumePreview({
   design,
   highlight,
   onSectionClick,
+  editable,
+  onReorderSections,
+  onToggleSection,
 }: {
   profile: CandidateProfile;
   draft: TailoredResumeDraft;
@@ -53,19 +70,25 @@ export function ResumePreview({
   highlight?: ResumeSectionKey | null;
   /** Lets the preview double as navigation: clicking a section (or a specific entry) jumps the editor there. */
   onSectionClick?: (key: ResumeSectionKey, entryIdx?: number) => void;
+  /** Turns on drag-to-reorder and hide/show controls directly on the preview -- the section management UI itself. */
+  editable?: boolean;
+  onReorderSections?: (order: ResumeSectionKey[]) => void;
+  onToggleSection?: (key: ResumeSectionKey) => void;
 }) {
   const d = design || DEFAULT_DESIGN;
   const fontFamily = previewFontStack(d.font);
   const pad = d.spacing === 'compact' ? '1.25rem' : d.spacing === 'relaxed' ? '2.5rem' : '1.75rem';
   const clickable = !!onSectionClick;
+  const [dragKey, setDragKey] = useState<ResumeSectionKey | null>(null);
+  const [dragOverKey, setDragOverKey] = useState<ResumeSectionKey | null>(null);
 
   const box = (key: typeof highlight, children: React.ReactNode) => (
     <div
       className={[
         highlight === key ? 'rounded ring-2 ring-primary/60 ring-offset-2' : '',
-        clickable ? 'cursor-pointer rounded transition-colors hover:bg-primary/5' : '',
+        clickable && !editable ? 'cursor-pointer rounded transition-colors hover:bg-primary/5' : '',
       ].join(' ')}
-      onClick={clickable && key ? () => onSectionClick!(key) : undefined}
+      onClick={clickable && !editable && key ? () => onSectionClick!(key) : undefined}
     >
       {children}
     </div>
@@ -152,6 +175,22 @@ export function ResumePreview({
     ),
   };
 
+  function handleDrop(targetKey: ResumeSectionKey) {
+    setDragOverKey(null);
+    if (!dragKey || dragKey === targetKey || !onReorderSections) { setDragKey(null); return; }
+    const next = order.filter((k) => k !== dragKey);
+    const targetIdx = next.indexOf(targetKey);
+    next.splice(targetIdx, 0, dragKey);
+    onReorderSections(next);
+    setDragKey(null);
+  }
+
+  // In edit mode, every section is visible (even empty/hidden ones) so they
+  // can still be reordered and toggled back on -- they just render dimmed
+  // with a placeholder. Read-only mode (export preview, template samples)
+  // only ever shows included sections with real content, as before.
+  const renderOrder = editable ? order : order.filter((key) => included[key]);
+
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
       <div style={{ fontFamily, padding: pad, color: '#1a1a1a', fontSize: d.fontSize === 'small' ? 12 : d.fontSize === 'large' ? 15 : 13.5 }}>
@@ -163,7 +202,43 @@ export function ResumePreview({
           {[profile.location, profile.email, profile.phone, profile.linkedin, profile.github, profile.portfolio].filter(Boolean).join('  |  ') || 'Add contact details in your profile'}
         </p>
 
-        {order.filter((key) => included[key]).map((key) => sections[key] && <div key={key}>{box(key, sections[key])}</div>)}
+        {renderOrder.map((key) => {
+          const content = sections[key];
+          if (!content && !editable) return null;
+          if (!editable) return <div key={key}>{box(key, content)}</div>;
+
+          return (
+            <div
+              key={key}
+              draggable
+              onDragStart={() => setDragKey(key)}
+              onDragOver={(e) => { e.preventDefault(); if (dragOverKey !== key) setDragOverKey(key); }}
+              onDragLeave={() => setDragOverKey((k) => (k === key ? null : k))}
+              onDrop={() => handleDrop(key)}
+              onDragEnd={() => { setDragKey(null); setDragOverKey(null); }}
+              className={[
+                'group relative rounded border transition-colors',
+                dragOverKey === key && dragKey !== key ? 'border-dashed border-primary' : 'border-transparent',
+                included[key] ? '' : 'opacity-40',
+              ].join(' ')}
+            >
+              <div className="absolute -right-1 -top-1 z-10 flex items-center gap-0.5 rounded-md border border-border bg-white px-1 py-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100">
+                <span className="cursor-grab text-gray-400 hover:text-gray-600" title="Drag to reorder">
+                  <GripVertical className="h-3.5 w-3.5" />
+                </span>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); onToggleSection?.(key); }}
+                  title={included[key] ? 'Hide from resume' : 'Show on resume'}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  {included[key] ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </button>
+              </div>
+              {box(key, content || <p className="text-xs italic text-gray-400">{SECTION_LABELS[key]} -- no content yet.</p>)}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

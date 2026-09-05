@@ -37,7 +37,7 @@ export function DesignSelector({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-tour="design-grid">
       <Button variant="outline" className="gap-2" disabled={recommending} onClick={handleRecommend}>
         <Sparkles className="h-4 w-4" /> {recommending ? 'Analyzing job...' : 'AI Recommended Design'}
       </Button>

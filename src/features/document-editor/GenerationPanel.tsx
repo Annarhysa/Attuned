@@ -41,6 +41,7 @@ export function GenerationPanel({
           </p>
         ) : (
           <div className="space-y-2">
+            <p className="text-sm font-medium">What would you like to generate?</p>
             <Label className="flex items-center gap-2"><Checkbox checked={genResume} onChange={(e) => setGenResume(e.target.checked)} /> Tailored Resume</Label>
             <Label className="flex items-center gap-2"><Checkbox checked={genCover} onChange={(e) => setGenCover(e.target.checked)} /> Cover Letter</Label>
           </div>
