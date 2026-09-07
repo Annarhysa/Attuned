@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRight, CheckCircle2, FileText, Gauge, Palette, Sparkles, Target, XCircle } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { ArrowRight, CheckCircle2, ChevronDown, FileStack, FileText, Gauge, Palette, Sparkles, Target, XCircle } from 'lucide-react';
 
 const HOW_IT_WORKS = [
   { title: 'Paste the job description', desc: 'Or upload it, or just drop in keywords. We analyze the role, company signals, and tone.' },
@@ -25,25 +26,40 @@ const FAQ = [
   { q: 'Can I edit what the AI generates?', a: 'Yes — every section goes through a live editor where you can accept, reject, or hand-edit each change.' },
 ];
 
+function ScrollHint({ targetId }: { targetId: string }) {
+  return (
+    <a
+      href={`#${targetId}`}
+      aria-label="Scroll to next section"
+      className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-bounce text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <ChevronDown className="h-6 w-6" />
+    </a>
+  );
+}
+
 export default function LandingPage() {
   return (
-    <main>
-      <header className="border-b border-border">
-        <div className="container flex h-16 items-center justify-between">
-          <span className="text-lg font-semibold tracking-tight">Attuned</span>
+    <main className="h-screen snap-y snap-mandatory overflow-y-scroll scroll-smooth">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur">
+        <div className="container grid h-16 grid-cols-[1fr_auto_1fr] items-center">
+          <span className="flex items-center gap-2 justify-self-start text-lg font-semibold tracking-tight">
+            <FileStack className="h-5 w-5 text-primary" /> Attuned
+          </span>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             <a href="#how-it-works" className="hover:text-foreground">How it works</a>
             <a href="#pricing" className="hover:text-foreground">Pricing</a>
             <a href="#faq" className="hover:text-foreground">FAQ</a>
           </nav>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2 justify-self-end">
+            <ThemeToggle />
             <Link href="/login"><Button variant="ghost" size="sm">Log in</Button></Link>
             <Link href="/register"><Button size="sm">Create My Application</Button></Link>
           </div>
         </div>
       </header>
 
-      <section className="border-b border-border bg-secondary/40">
+      <section className="relative snap-start flex min-h-[calc(100vh-4rem)] flex-col justify-center border-b border-border bg-secondary/40">
         <div className="container flex flex-col items-center gap-6 py-24 text-center">
           <Badge variant="outline" className="gap-1.5"><Sparkles className="h-3 w-3" /> Evidence-based, not generic AI</Badge>
           <h1 className="max-w-3xl text-balance text-5xl font-semibold tracking-tight">Your application. Tailored for the job.</h1>
@@ -55,25 +71,29 @@ export default function LandingPage() {
             <a href="#how-it-works"><Button size="lg" variant="outline">See How It Works</Button></a>
           </div>
         </div>
+        <ScrollHint targetId="how-it-works" />
       </section>
 
-      <section id="how-it-works" className="container py-20">
-        <h2 className="text-center text-3xl font-semibold tracking-tight">How it works</h2>
-        <p className="mt-2 text-center text-muted-foreground">From job posting to submit-ready application in four steps.</p>
-        <div className="mt-12 grid gap-6 md:grid-cols-4">
-          {HOW_IT_WORKS.map((step, i) => (
-            <Card key={step.title}>
-              <CardHeader>
-                <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{i + 1}</span>
-                <CardTitle className="text-base">{step.title}</CardTitle>
-                <CardDescription>{step.desc}</CardDescription>
-              </CardHeader>
-            </Card>
-          ))}
+      <section id="how-it-works" className="relative snap-start flex min-h-[calc(100vh-4rem)] scroll-mt-16 flex-col justify-center">
+        <div className="container py-20">
+          <h2 className="text-center text-3xl font-semibold tracking-tight">How it works</h2>
+          <p className="mt-2 text-center text-muted-foreground">From job posting to submit-ready application in four steps.</p>
+          <div className="mt-12 grid gap-6 md:grid-cols-4">
+            {HOW_IT_WORKS.map((step, i) => (
+              <Card key={step.title}>
+                <CardHeader>
+                  <span className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{i + 1}</span>
+                  <CardTitle className="text-base">{step.title}</CardTitle>
+                  <CardDescription>{step.desc}</CardDescription>
+                </CardHeader>
+              </Card>
+            ))}
+          </div>
         </div>
+        <ScrollHint targetId="why-generic-fails" />
       </section>
 
-      <section className="border-y border-border bg-secondary/40">
+      <section id="why-generic-fails" className="relative snap-start flex min-h-[calc(100vh-4rem)] scroll-mt-16 flex-col justify-center border-y border-border bg-secondary/40">
         <div className="container grid gap-12 py-20 md:grid-cols-2">
           <div>
             <h2 className="text-3xl font-semibold tracking-tight">Why generic resumes fail</h2>
@@ -101,35 +121,39 @@ export default function LandingPage() {
             </ul>
           </div>
         </div>
+        <ScrollHint targetId="features" />
       </section>
 
-      <section className="container py-20">
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <Target className="h-6 w-6 text-primary" />
-              <CardTitle>AI-Powered Tailoring</CardTitle>
-              <CardDescription>Every requirement in the job description is matched against real evidence in your profile — skills, projects, and experience.</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Palette className="h-6 w-6 text-primary" />
-              <CardTitle>Industry-Specific Optimization</CardTitle>
-              <CardDescription>Terminology, tone, and visual design adapt to the role's industry — fintech, AI startup, healthcare, and more.</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader>
-              <Gauge className="h-6 w-6 text-primary" />
-              <CardTitle>ATS-Friendly Documents</CardTitle>
-              <CardDescription>Every design is checked against ATS-safe formatting rules, with a live keyword coverage score.</CardDescription>
-            </CardHeader>
-          </Card>
+      <section id="features" className="relative snap-start flex min-h-[calc(100vh-4rem)] scroll-mt-16 flex-col justify-center">
+        <div className="container py-20">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <Target className="h-6 w-6 text-primary" />
+                <CardTitle>AI-Powered Tailoring</CardTitle>
+                <CardDescription>Every requirement in the job description is matched against real evidence in your profile — skills, projects, and experience.</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <Palette className="h-6 w-6 text-primary" />
+                <CardTitle>Industry-Specific Optimization</CardTitle>
+                <CardDescription>Terminology, tone, and visual design adapt to the role's industry — fintech, AI startup, healthcare, and more.</CardDescription>
+              </CardHeader>
+            </Card>
+            <Card>
+              <CardHeader>
+                <Gauge className="h-6 w-6 text-primary" />
+                <CardTitle>ATS-Friendly Documents</CardTitle>
+                <CardDescription>Every design is checked against ATS-safe formatting rules, with a live keyword coverage score.</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
         </div>
+        <ScrollHint targetId="before-after" />
       </section>
 
-      <section className="border-y border-border bg-secondary/40">
+      <section id="before-after" className="relative snap-start flex min-h-[calc(100vh-4rem)] scroll-mt-16 flex-col justify-center border-y border-border bg-secondary/40">
         <div className="container py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">Before / After</h2>
           <div className="mt-10 grid gap-6 md:grid-cols-2">
@@ -149,36 +173,40 @@ export default function LandingPage() {
             </Card>
           </div>
         </div>
+        <ScrollHint targetId="pricing" />
       </section>
 
-      <section id="pricing" className="container py-20">
-        <h2 className="text-center text-3xl font-semibold tracking-tight">Pricing</h2>
-        <p className="mt-2 text-center text-muted-foreground">Simple plans — full pricing coming soon.</p>
-        <div className="mt-10 grid gap-6 md:grid-cols-3">
-          {[
-            { name: 'Free', price: '$0', desc: 'Try the full flow', features: ['1 application', 'Match analysis', 'PDF export'] },
-            { name: 'Pro', price: '$19/mo', desc: 'For active job seekers', features: ['Unlimited applications', 'All document types', 'DOCX + PDF export', 'Application tracker'] },
-            { name: 'Career Coach', price: 'Contact us', desc: 'For coaches & teams', features: ['Multi-client workspaces', 'Custom templates', 'Priority support'] },
-          ].map((plan) => (
-            <Card key={plan.name} className="flex flex-col">
-              <CardHeader>
-                <CardTitle>{plan.name}</CardTitle>
-                <CardDescription>{plan.desc}</CardDescription>
-                <p className="pt-2 text-2xl font-semibold">{plan.price}</p>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  {plan.features.map((f) => (
-                    <li key={f} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-success" /> {f}</li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
+      <section id="pricing" className="relative snap-start flex min-h-[calc(100vh-4rem)] scroll-mt-16 flex-col justify-center">
+        <div className="container py-20">
+          <h2 className="text-center text-3xl font-semibold tracking-tight">Pricing</h2>
+          <p className="mt-2 text-center text-muted-foreground">Simple plans — full pricing coming soon.</p>
+          <div className="mt-10 grid gap-6 md:grid-cols-3">
+            {[
+              { name: 'Free', price: '$0', desc: 'Try the full flow', features: ['1 application', 'Match analysis', 'PDF export'] },
+              { name: 'Pro', price: '$19/mo', desc: 'For active job seekers', features: ['Unlimited applications', 'All document types', 'DOCX + PDF export', 'Application tracker'] },
+              { name: 'Career Coach', price: 'Contact us', desc: 'For coaches & teams', features: ['Multi-client workspaces', 'Custom templates', 'Priority support'] },
+            ].map((plan) => (
+              <Card key={plan.name} className="flex flex-col">
+                <CardHeader>
+                  <CardTitle>{plan.name}</CardTitle>
+                  <CardDescription>{plan.desc}</CardDescription>
+                  <p className="pt-2 text-2xl font-semibold">{plan.price}</p>
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    {plan.features.map((f) => (
+                      <li key={f} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-success" /> {f}</li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
+        <ScrollHint targetId="faq" />
       </section>
 
-      <section id="faq" className="border-t border-border bg-secondary/40">
+      <section id="faq" className="snap-start flex min-h-[calc(100vh-4rem)] scroll-mt-16 flex-col justify-center border-t border-border bg-secondary/40">
         <div className="container py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">Frequently asked questions</h2>
           <div className="mx-auto mt-10 max-w-2xl space-y-6">
@@ -192,7 +220,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="border-t border-border py-10">
+      <footer className="snap-end border-t border-border py-10">
         <div className="container flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
           <div className="flex items-center gap-2 font-medium text-foreground"><FileText className="h-4 w-4" /> Attuned</div>
           <p>Make every application more relevant.</p>

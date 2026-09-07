@@ -48,15 +48,17 @@ function TabFooterNav({ current, onNavigate }: { current: string; onNavigate: (t
   return (
     // Lives at the top of the tab content, right under the tab list -- always
     // visible on landing, no scrolling (up or down) required to find it.
-    <div className="mb-2 flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2.5">
+    // Plain row (no card/border) with equal spacing above (from the tab list)
+    // and below (to the tab content), matched to the tab list's own height.
+    <div className="my-3 flex items-center justify-between">
       {prev ? (
-        <Button variant="outline" className="gap-2" onClick={() => onNavigate(prev.key)}>
-          <ArrowLeft className="h-4 w-4" /> {prev.label}
+        <Button variant="ghost" size="sm" className="gap-1.5" onClick={() => onNavigate(prev.key)}>
+          <ArrowLeft className="h-3.5 w-3.5" /> {prev.label}
         </Button>
       ) : <span />}
       {next ? (
-        <Button className="gap-2" onClick={() => onNavigate(next.key)}>
-          {next.label} <ArrowRight className="h-4 w-4" />
+        <Button size="sm" className="gap-1.5" onClick={() => onNavigate(next.key)}>
+          {next.label} <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       ) : <span />}
     </div>
@@ -280,7 +282,11 @@ function ApplicationWorkspaceContent() {
         </TabsContent>
 
         <TabsContent value="export" className="mt-6">
-          <ExportPanel applicationId={id} />
+          {profile ? (
+            <ExportPanel applicationId={id} profile={profile} draft={draft} letter={letter} design={app.designTemplate} />
+          ) : (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading your profile...</p>
+          )}
         </TabsContent>
       </Tabs>
     </div>
