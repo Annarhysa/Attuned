@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme-toggle';
 import {
   LayoutDashboard, User, Briefcase, FileText, Mail, LayoutTemplate, ListChecks, Settings, LogOut, FileStack,
 } from 'lucide-react';
@@ -40,9 +41,12 @@ export function Sidebar() {
 
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-secondary/30">
-      <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <FileStack className="h-5 w-5 text-primary" />
-        <span className="font-semibold tracking-tight">Attuned</span>
+      <div className="flex h-16 items-center justify-between border-b border-border px-5">
+        <div className="flex items-center gap-2">
+          <FileStack className="h-5 w-5 text-primary" />
+          <span className="font-semibold tracking-tight">Attuned</span>
+        </div>
+        <ThemeToggle />
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => {
