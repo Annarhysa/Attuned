@@ -22,9 +22,37 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  stripeCustomerId String? @unique
+  isAdmin          Boolean @default(false)
+
+  // Referrals: this user's own shareable code, who referred them (if anyone),
+  // and whether they've unlocked the discounted EUR 30/year rate by having
+  // at least one person sign up through their link.
+  referralCode     String   @unique @default(dbgenerated("substr(md5(random()::text), 1, 8)"))
+  referredById     String?
+  referredBy       User?    @relation("Referrals", fields: [referredById], references: [id])
+  referrals        User[]   @relation("Referrals")
+  referralUnlocked Boolean  @default(false)
+
   profile          CandidateProfile?
   applications     Application[]
   verificationCodes VerificationCode[]
+  subscription     Subscription?
+}
+
+model Subscription {
+  id                   String    @id @default(uuid())
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeSubscriptionId String?   @unique
+  plan                 String    // "monthly" | "yearly" | "yearly_referral"
+  status               String    @default("incomplete") // mirrors Stripe subscription status: trialing | active | past_due | canceled | incomplete
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean   @default(false)
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }
 
 // Shared table for OTP email verification and password-reset tokens.

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { JobInput } from '@/features/job-input/JobInput';
 import { JobIntelligence } from '@/features/job-input/JobIntelligence';
@@ -13,6 +14,7 @@ export default function NewApplicationPage() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<JobAnalysis | null>(null);
   const [creating, setCreating] = useState(false);
+  const [limitReached, setLimitReached] = useState(false);
 
   function handleAnalyzed(id: string, a: JobAnalysis) {
     setJobId(id);
@@ -27,9 +29,25 @@ export default function NewApplicationPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ jobId }),
     });
-    const data = await res.json();
     setCreating(false);
+    if (res.status === 402) {
+      setLimitReached(true);
+      return;
+    }
+    const data = await res.json();
     if (data.id) router.push(`/applications/${data.id}`);
+  }
+
+  if (limitReached) {
+    return (
+      <div className="mx-auto max-w-md space-y-4 rounded-lg border border-border bg-secondary/30 p-6 text-center">
+        <h2 className="text-lg font-semibold">Your free trial is used up</h2>
+        <p className="text-sm text-muted-foreground">
+          The free trial includes 1 application. Upgrade to a membership to create more.
+        </p>
+        <Link href="/settings"><Button className="gap-2">Upgrade in Settings <ArrowRight className="h-4 w-4" /></Button></Link>
+      </div>
+    );
   }
 
   return (
