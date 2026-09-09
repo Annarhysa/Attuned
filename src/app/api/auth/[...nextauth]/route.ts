@@ -1,6 +1,23 @@
 import NextAuth from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { buildAuthOptions } from '@/lib/auth';
 
-const handler = NextAuth(authOptions);
+async function readRemember(req: NextRequest): Promise<boolean> {
+  try {
+    const form = await req.clone().formData();
+    const value = form.get('remember');
+    if (value === null) return true;
+    return value === 'true';
+  } catch {
+    return true;
+  }
+}
 
-export { handler as GET, handler as POST };
+export async function GET(req: NextRequest, ctx: { params: { nextauth: string[] } }) {
+  return NextAuth(buildAuthOptions(true))(req, ctx);
+}
+
+export async function POST(req: NextRequest, ctx: { params: { nextauth: string[] } }) {
+  const remember = await readRemember(req);
+  return NextAuth(buildAuthOptions(remember))(req, ctx);
+}

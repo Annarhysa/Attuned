@@ -1,0 +1,50 @@
+import { NicheDictionary } from './techAiFintech';
+
+export const marketing: NicheDictionary = {
+  id: 'marketing',
+  label: 'Marketing',
+  skills: {
+    SEO: ['seo', 'search engine optimization', 'on-page seo', 'technical seo'],
+    SEM: ['sem', 'search engine marketing', 'paid search'],
+    'Content Strategy': ['content strategy', 'content marketing', 'editorial calendar'],
+    'Social Media Marketing': ['social media marketing', 'social media management', 'organic social'],
+    'Google Analytics': ['google analytics', 'ga4', 'web analytics'],
+    'Paid Advertising': ['paid advertising', 'ppc', 'paid media', 'google ads', 'meta ads', 'facebook ads'],
+    'Email Marketing': ['email marketing', 'email campaigns', 'marketing automation', 'hubspot', 'mailchimp', 'klaviyo'],
+    'Brand Strategy': ['brand strategy', 'brand management', 'brand positioning'],
+    'Campaign Management': ['campaign management', 'campaign planning', 'integrated campaigns'],
+    'Marketing Analytics': ['marketing analytics', 'attribution', 'conversion rate optimization', 'cro'],
+    CRM: ['crm', 'salesforce', 'hubspot crm'],
+    'Copywriting': ['copywriting', 'copywriter', 'creative writing'],
+    'Growth Marketing': ['growth marketing', 'growth hacking', 'demand generation'],
+    'Influencer Marketing': ['influencer marketing', 'creator partnerships'],
+    'Marketing Automation': ['marketing automation', 'workflow automation', 'lead nurturing'],
+    'A/B Testing': ['a/b testing', 'ab testing', 'split testing', 'experimentation'],
+    'Product Marketing': ['product marketing', 'go-to-market', 'gtm strategy'],
+    'Public Relations': ['public relations', 'pr', 'media relations'],
+    'Marketing Budgeting': ['budget management', 'marketing budget', 'roi analysis'],
+    Adobe: ['adobe creative suite', 'photoshop', 'illustrator'],
+    'Video Marketing': ['video marketing', 'video production'],
+  },
+  domainTerms: [
+    'engagement rate', 'conversion funnel', 'brand awareness', 'customer acquisition cost',
+    'lifetime value', 'ltv', 'cac', 'reach', 'impressions', 'ctr', 'click-through rate',
+  ],
+  softSkills: [
+    'communication', 'creativity', 'storytelling', 'collaboration', 'stakeholder management',
+    'project management', 'adaptability', 'data-driven', 'cross-functional',
+  ],
+  toneDefault: 'conversational',
+  seniorityMarkers: {
+    intern: ['intern', 'internship'],
+    junior: ['junior', 'entry-level', 'coordinator', 'associate'],
+    mid: ['marketing specialist', 'marketing manager', 'mid-level'],
+    senior: ['senior', 'sr.', 'sr '],
+    lead: ['lead', 'head of marketing', 'director of marketing'],
+    manager: ['manager', 'vp of marketing', 'cmo'],
+  },
+  companySignalMarkers: [
+    'fast-paced', 'startup', 'agency', 'brand', 'consumer-facing', 'b2b', 'b2c',
+    'e-commerce', 'creative-led', 'data-driven culture',
+  ],
+};

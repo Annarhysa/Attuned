@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
+import { ThemeToggle } from '@/components/theme-toggle';
+import { APP_VERSION } from '@/components/legal-page';
 import {
   LayoutDashboard, User, Briefcase, FileText, Mail, LayoutTemplate, ListChecks, Settings, LogOut, FileStack,
 } from 'lucide-react';
@@ -19,16 +21,38 @@ const NAV = [
 ];
 
 export function Sidebar() {
-  const pathname = usePathname();
+  const pathname = usePathname() || '';
+
+  // /applications is special-cased: the bare list page is "Applications",
+  // but everything under it (/applications/new to start one, or
+  // /applications/[id] to actually build/edit a resume) is where resume
+  // building happens, so it should light up "Resume Builder" instead.
+  let activeHref: string | undefined;
+  if (pathname === '/applications') {
+    activeHref = '/applications';
+  } else if (pathname.startsWith('/applications/')) {
+    activeHref = '/applications/new';
+  } else {
+    // Everything else: longest-prefix match among the remaining nav items.
+    activeHref = NAV
+      .filter((item) => item.href !== '/applications' && item.href !== '/applications/new')
+      .filter((item) => pathname === item.href || pathname.startsWith(`${item.href}/`))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  }
+
   return (
     <aside className="flex h-screen w-60 shrink-0 flex-col border-r border-border bg-secondary/30">
-      <div className="flex h-16 items-center gap-2 border-b border-border px-5">
-        <FileStack className="h-5 w-5 text-primary" />
-        <span className="font-semibold tracking-tight">Attuned</span>
+      <div className="flex h-16 items-center justify-between border-b border-border px-5">
+        <div className="flex items-center gap-2">
+          <FileStack className="h-5 w-5 text-primary" />
+          <span className="font-semibold tracking-tight">Attuned</span>
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{APP_VERSION}</span>
+        </div>
+        <ThemeToggle />
       </div>
       <nav className="flex-1 space-y-1 p-3">
         {NAV.map((item) => {
-          const active = pathname === item.href || (item.href !== '/dashboard' && pathname?.startsWith(item.href));
+          const active = item.href === activeHref;
           return (
             <Link
               key={item.href}

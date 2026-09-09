@@ -1,4 +1,6 @@
 import { techAiFintech, NicheDictionary } from './techAiFintech';
+import { marketing } from './marketing';
+import { healthcare } from './healthcare';
 
 // Stub niches: extension points for future work. Each has a minimal dictionary
 // so the app doesn't break if detected, but only tech-ai-fintech is fully
@@ -21,13 +23,13 @@ function stubNiche(id: string, label: string, skills: string[]): NicheDictionary
 
 export const NICHES: Record<string, NicheDictionary> = {
   'tech-ai-fintech': techAiFintech,
+  marketing,
+  healthcare,
   nursing: stubNiche('nursing', 'Nursing / Healthcare', ['Patient Care', 'EHR', 'HIPAA', 'Clinical Documentation', 'Triage']),
   sales: stubNiche('sales', 'Sales', ['CRM', 'Pipeline Management', 'Salesforce', 'Negotiation', 'Quota Attainment']),
-  marketing: stubNiche('marketing', 'Marketing', ['SEO', 'Content Strategy', 'Campaign Management', 'Google Analytics', 'Brand Strategy']),
   finance: stubNiche('finance', 'Finance', ['Financial Modeling', 'Excel', 'GAAP', 'Forecasting', 'Budgeting']),
   consulting: stubNiche('consulting', 'Consulting', ['Stakeholder Management', 'Process Improvement', 'PowerPoint', 'Strategy', 'Client Management']),
   trades: stubNiche('trades', 'Trades', ['OSHA', 'Blueprint Reading', 'Equipment Maintenance', 'Safety Compliance']),
-  healthcare: stubNiche('healthcare', 'Healthcare', ['HIPAA', 'Patient Care', 'Medical Records', 'Clinical Operations']),
   education: stubNiche('education', 'Education', ['Curriculum Development', 'Classroom Management', 'Lesson Planning', 'Student Assessment']),
 };
 

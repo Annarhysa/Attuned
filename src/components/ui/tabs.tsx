@@ -39,17 +39,20 @@ export function TabsList({ className, children }: { className?: string; children
   return <div className={cn('inline-flex items-center gap-1 rounded-lg bg-muted p-1', className)}>{children}</div>;
 }
 
-export function TabsTrigger({ value, className, children }: { value: string; className?: string; children: React.ReactNode }) {
+export function TabsTrigger({ value, className, disabled, title, children }: { value: string; className?: string; disabled?: boolean; title?: string; children: React.ReactNode }) {
   const ctx = React.useContext(TabsContext);
   if (!ctx) return null;
   const active = ctx.value === value;
   return (
     <button
       type="button"
-      onClick={() => ctx.setValue(value)}
+      disabled={disabled}
+      title={title}
+      onClick={() => !disabled && ctx.setValue(value)}
       className={cn(
         'rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
         active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
+        disabled ? 'cursor-not-allowed opacity-40 hover:text-muted-foreground' : '',
         className
       )}
     >
