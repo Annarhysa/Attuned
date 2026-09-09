@@ -3,7 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { ArrowRight, CheckCircle2, ChevronDown, FileStack, FileText, Gauge, Palette, Sparkles, Target, XCircle } from 'lucide-react';
+import { APP_VERSION } from '@/components/legal-page';
+import { ArrowRight, CheckCircle2, ChevronDown, FileStack, Gauge, Gift, Palette, Sparkles, Target, XCircle } from 'lucide-react';
 
 const HOW_IT_WORKS = [
   { title: 'Paste the job description', desc: 'Or upload it, or just drop in keywords. We analyze the role, company signals, and tone.' },
@@ -179,18 +180,19 @@ export default function LandingPage() {
       <section id="pricing" className="relative snap-start flex min-h-[calc(100vh-4rem)] scroll-mt-16 flex-col justify-center">
         <div className="container py-20">
           <h2 className="text-center text-3xl font-semibold tracking-tight">Pricing</h2>
-          <p className="mt-2 text-center text-muted-foreground">Simple plans — full pricing coming soon.</p>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
+          <p className="mt-2 text-center text-muted-foreground">Try it free, then a simple membership.</p>
+          <div className="mx-auto mt-10 grid max-w-3xl gap-6 md:grid-cols-2">
             {[
-              { name: 'Free', price: '$0', desc: 'Try the full flow', features: ['1 application', 'Match analysis', 'PDF export'] },
-              { name: 'Pro', price: '$19/mo', desc: 'For active job seekers', features: ['Unlimited applications', 'All document types', 'DOCX + PDF export', 'Application tracker'] },
-              { name: 'Career Coach', price: 'Contact us', desc: 'For coaches & teams', features: ['Multi-client workspaces', 'Custom templates', 'Priority support'] },
+              { name: 'Free Trial', price: '€0', desc: 'No credit card required', features: ['1 application', 'Full match analysis', 'PDF & DOCX export'] },
+              { name: 'Membership', price: '€5/mo', sub: 'or €50/yr', desc: 'For active job seekers', features: ['Unlimited applications', 'All document types', 'DOCX + PDF export', 'Application tracker'], highlight: true },
             ].map((plan) => (
-              <Card key={plan.name} className="flex flex-col">
+              <Card key={plan.name} className={`flex flex-col ${plan.highlight ? 'border-primary' : ''}`}>
                 <CardHeader>
                   <CardTitle>{plan.name}</CardTitle>
                   <CardDescription>{plan.desc}</CardDescription>
-                  <p className="pt-2 text-2xl font-semibold">{plan.price}</p>
+                  <p className="pt-2 text-2xl font-semibold">
+                    {plan.price} {plan.sub && <span className="text-sm font-normal text-muted-foreground">{plan.sub}</span>}
+                  </p>
                 </CardHeader>
                 <CardContent className="flex-1">
                   <ul className="space-y-2 text-sm text-muted-foreground">
@@ -202,6 +204,9 @@ export default function LandingPage() {
               </Card>
             ))}
           </div>
+          <p className="mx-auto mt-6 flex max-w-3xl items-center justify-center gap-1.5 text-center text-sm text-muted-foreground">
+            <Gift className="h-4 w-4 text-primary" /> Refer a friend who creates an account and unlock the yearly plan at <span className="font-medium text-foreground">€30/year</span> — for life.
+          </p>
         </div>
         <ScrollHint targetId="faq" />
       </section>
@@ -220,10 +225,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <footer className="snap-end border-t border-border py-10">
-        <div className="container flex flex-col items-center gap-2 text-center text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 font-medium text-foreground"><FileText className="h-4 w-4" /> Attuned</div>
-          <p>Make every application more relevant.</p>
+      <footer className="snap-end border-t border-border py-4">
+        <div className="container flex flex-col items-center justify-between gap-2 text-xs text-muted-foreground sm:flex-row">
+          <div className="flex items-center gap-1.5">
+            <FileStack className="h-3.5 w-3.5 text-primary" />
+            <span className="font-medium text-foreground">Attuned</span>
+            <span>{APP_VERSION} · © {new Date().getFullYear()} Annarhysa Albert · MIT Licensed</span>
+          </div>
+          <nav className="flex flex-wrap items-center justify-center gap-x-3">
+            <Link href="/about" className="hover:text-foreground">About</Link>
+            <Link href="/privacy" className="hover:text-foreground">Privacy</Link>
+            <Link href="/cookies" className="hover:text-foreground">Cookies</Link>
+            <Link href="/license" className="hover:text-foreground">License</Link>
+          </nav>
         </div>
       </footer>
     </main>

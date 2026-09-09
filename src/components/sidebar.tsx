@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { APP_VERSION } from '@/components/legal-page';
 import {
   LayoutDashboard, User, Briefcase, FileText, Mail, LayoutTemplate, ListChecks, Settings, LogOut, FileStack,
 } from 'lucide-react';
@@ -45,6 +46,7 @@ export function Sidebar() {
         <div className="flex items-center gap-2">
           <FileStack className="h-5 w-5 text-primary" />
           <span className="font-semibold tracking-tight">Attuned</span>
+          <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">{APP_VERSION}</span>
         </div>
         <ThemeToggle />
       </div>
